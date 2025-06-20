@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <title>教學影片區</title>
+    <link rel="stylesheet" href="/static/video.css">
+</head>
+
+<body>
+    <div class="topbar">
+        <div class="system-title">機器學習教學平台</div>
+        <div>
+            <span class="user-label">歡迎，{{ username }}</span>
+            <a href="{{ url_for('logout') }}" class="logout-link">登出</a>
+            <a href="{{ url_for('dashboard') }}" class="logout-link">AI對話</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <h2>機器學習 &gt;</h2>
+
+            <!-- 資料預處理 -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    資料預處理
+                    <span class="arrow">&#9660;</span> <!-- ▼ -->
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/eFqX6miUkNE">資料預處理 #1</button>
+                    <button data-src="https://www.youtube.com/embed/7pDI5BrnzT0">資料預處理 #2</button>
+                    <button data-src="https://www.youtube.com/embed/Wm2WW-9ucec">資料預處理 #3</button>
+                    <button data-src="https://www.youtube.com/embed/rlp3WCKh8nA">資料預處理 #4</button>
+                    <button data-src="https://www.youtube.com/embed/2m6G80E769s">資料預處理 #5</button>
+                </div>
+            </div>
+
+            <!-- 簡單線性回歸 -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    簡單線性回歸
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/TlQph9btXXg">簡單線性回歸 #1</button>
+                    <button data-src="https://www.youtube.com/embed/0OrQEy0PUu8">簡單線性回歸 #2</button>
+                    <button data-src="https://www.youtube.com/embed/Z5Qr1WCm-0s">簡單線性回歸 #3</button>
+                    <button data-src="https://www.youtube.com/embed/HVv2T2_X6_I">簡單線性回歸 #4</button>
+                </div>
+            </div>
+
+            <!-- 多元線性回歸 -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    多元線性回歸
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/S4DZyq6YnXE">多元線性回歸 #1</button>
+                    <button data-src="https://www.youtube.com/embed/ycDNXdt4B9s">多元線性回歸 #2</button>
+                    <button data-src="https://www.youtube.com/embed/_azK56iLmS4">多元線性回歸 #3</button>
+                </div>
+            </div>
+
+            <!-- 多項式回歸 -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    多項式回歸
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/rmrnBM3mVsQ">多項式回歸 #1</button>
+                    <button data-src="https://www.youtube.com/embed/_q5SyL82Vc8">多項式回歸 #2</button>
+                </div>
+            </div>
+
+            <!-- R Squared -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    R Squared
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/Pa2oVPYPQYY">R Squared (R平方)</button>
+                    <button data-src="https://www.youtube.com/embed/H8OVpXKnh5c">R Squared介紹</button>
+                    <button data-src="https://www.youtube.com/embed/ewNrzR5s3E8">Adjusted R Squared (調整R平方)係數</button>
+                    <button data-src="https://www.youtube.com/embed/vOCB46P_WCM">Adjusted R Squared介紹</button>
+                </div>
+            </div>
+
+            <!-- Support Vector Machine -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    Support Vector Machine
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/afDRvWxobP8">SVM介紹</button>
+                    <button data-src="https://www.youtube.com/embed/teJ-9ihjmcI">SVM Python實務操作</button>
+                    <button data-src="https://www.youtube.com/embed/namj9uIwjaE">SVM Python實務操作 (使用MNIST資料集合)</button>
+                </div>
+            </div>
+
+            <!-- Naive Bayes -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    Naive Bayes(單純貝氏分類器)
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/1bc7EOx48mo">Naive Bayes介紹 Part 1</button>
+                    <button data-src="https://www.youtube.com/embed/tlJfftcWMCw">Naive Bayes介紹 Part 2</button>
+                    <button data-src="https://www.youtube.com/embed/nqrkfeaq3tU">Naive Bayes介紹 Part 3</button>
+                </div>
+            </div>
+
+            <!-- Decision Tree(決策樹) -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    Decision Tree(決策樹)
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/bE2yMLKJFbk">Decision Tree介紹 Part 1</button>
+                    <button data-src="https://www.youtube.com/embed/yfDLN82D6Gc">Decision Tree介紹 Part 2</button>
+                    <button data-src="https://www.youtube.com/embed/Pwp7dxlv5MY">Decision Tree Python實作</button>
+                    <button data-src="https://www.youtube.com/embed/WWjZb38YIHE">Decision Tree介紹 Part 3</button>
+                </div>
+            </div>
+
+            <!-- Random Forest (隨機森林) -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    Random Forest (隨機森林)
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/wIXMzMsjULQ">Random Forest (隨機森林)</button>
+                    <button data-src="https://www.youtube.com/embed/3U8N5sPdQPk">Random Forest (隨機森林) Python實作</button>
+                </div>
+            </div>
+
+            <!-- K-Means (K平均) -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    K-Means (K平均)
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/A5gK564vHmE">K-Means (K平均) Part 1</button>
+                    <button data-src="https://www.youtube.com/embed/13g6powgeUM">K-Means (K平均) Part 2</button>
+                    <button data-src="https://www.youtube.com/embed/F16VusxMMSU">K-Means (K平均) Part 3</button>
+                    <button data-src="https://www.youtube.com/embed/4oP318KqXGo">K-Means (K平均) Python實作</button>
+                </div>
+            </div>
+
+            <!-- K-Fold Cross Validation (交叉驗證)  -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    K-Fold Cross Validation (交叉驗證)
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/sRV18JVtBQI">K-Fold Cross Validation (交叉驗證)
+                        #1</button>
+                    <button data-src="https://www.youtube.com/embed/DPcFlzF9zSk">K-Fold Cross Validation (交叉驗證)
+                        #2</button>
+                </div>
+            </div>
+
+            <!-- Grid Search (網格搜尋)  -->
+            <div class="dropdown">
+                <button class="dropdown-btn">
+                    Grid Search (網格搜尋)
+                    <span class="arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-content">
+                    <button data-src="https://www.youtube.com/embed/k1xsoog2y3Q">Grid Search (網格搜尋) Python實作</button>
+                </div>
+            </div>
+            <!-- AI 機器人按鈕 -->
+            <button class="aiRobot-btn" onclick="toggleChat()" title="開啟 AI 聊天">
+                <img src="/static/aiRobot.png" alt="AI 機器人" />
+            </button>
+
+            <!-- 對話視窗 -->
+            <div id="chatWindow" class="chat-window hidden">
+                <div class="chat-header">
+                    AI 機器人 🤖
+                    <button class="close-btn" onclick="toggleChat()">✖</button>
+                </div>
+                <div class="chat-messages" id="chat-messages"></div>
+                <form id="chat-form" class="chat-form" autocomplete="off">
+                    <input id="chat-input" type="text" placeholder="輸入訊息..." required />
+                    <button type="submit">發送</button>
+                    <button type="button" id="clearBtn">清除</button>
+                </form>
+            </div>
+
+
+        </div>
+
+
+        </aside>
+
+        <!-- 影片與聊天區 -->
+        <main class="main">
+            <h2>機器學習 - 資料預處理 #1 by 國立屏東大學林彥廷老師</h2>
+            <div class="video-wrapper">
+                <!-- 你可以換成 <video> or iframe -->
+                <iframe id="videoPlayer" width="100%" height="100%" src="https://www.youtube.com/embed/eFqX6miUkNE"
+                    frameborder="0" allowfullscreen>
+                </iframe>
+            </div>
+
+
+        </main>
+    </div>
+
+    <script>
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const dropdowns = document.querySelectorAll(".dropdown-btn");
+
+            dropdowns.forEach(btn => {
+                btn.addEventListener("click", function () {
+                    const content = this.nextElementSibling;
+                    const arrow = this.querySelector(".arrow");
+
+                    const isOpen = content.style.display === "block";
+                    // 展開/收合區塊
+                    content.style.display = isOpen ? "none" : "block";
+                    // 改變箭頭方向
+                    arrow.innerHTML = isOpen ? "&#9660;" : "&#9650;";
+                });
+            });
+        });
+    </script>
+
+    <script>
+        // 點擊課程按鈕切換影片 & 套用 active 樣式
+        document.addEventListener("DOMContentLoaded", function () {
+            const buttons = document.querySelectorAll(".dropdown-content button");
+            const iframe = document.getElementById("videoPlayer");
+
+            buttons.forEach(btn => {
+                btn.addEventListener("click", function () {
+                    const videoUrl = this.getAttribute("data-src");
+                    iframe.src = videoUrl;
+
+                    //  切換影片標題
+                    const title = document.querySelector(".main h2");
+                    title.textContent = "機器學習 - " + this.textContent + " by 國立屏東大學林彥廷老師";
+
+                    //  清除所有 active 樣式
+                    buttons.forEach(b => b.classList.remove("active"));
+
+                    //  套用當前按鈕 active 樣式
+                    this.classList.add("active");
+                });
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sidebar = document.querySelector('.sidebar');
+
+            sidebar.addEventListener('mouseenter', () => {
+                sidebar.classList.add('scrollable');
+            });
+
+            sidebar.addEventListener('mouseleave', () => {
+                sidebar.classList.remove('scrollable');
+            });
+        });
+    </script>
+
+    <script>
+        function toggleChat() {
+            const chatWindow = document.getElementById("chatWindow");
+            const botBtn = document.querySelector(".aiRobot-btn");
+
+            const isHidden = chatWindow.classList.contains("hidden");
+            if (isHidden) {
+                chatWindow.classList.remove("hidden");
+                botBtn.style.display = "none";
+            } else {
+                chatWindow.classList.add("hidden");
+                botBtn.style.display = "block";
+            }
+        }
+
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const clearBtn = document.getElementById('clearBtn');
+
+        clearBtn.addEventListener('click', async () => {
+            chatMessages.innerHTML = '';
+            chatInput.value = '';
+
+            try {
+                const res = await fetch('/chat/clear', { method: 'POST' });
+                const result = await res.json();
+
+                if (result.success) {
+                    addMessage('ai', '你好！有什麼我可以幫忙的嗎？');
+                } else {
+                    addMessage('ai', '清除紀錄失敗：' + (result.error || '未知錯誤'));
+                }
+            } catch (e) {
+                addMessage('ai', '清除伺服器紀錄時發生錯誤');
+                console.error(e);
+            }
+        });
+
+        function addMessage(role, content) {
+            const div = document.createElement('div');
+            div.classList.add('bubble', role);
+            div.textContent = content;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            addMessage('ai', '你好！有什麼我可以幫忙的嗎？');
+
+            try {
+                const res = await fetch('/chat/history');
+                const history = await res.json();
+                if (Array.isArray(history)) {
+                    for (const msg of history) {
+                        addMessage(msg.role, msg.content);
+                    }
+                } else if (history.error) {
+                    addMessage('ai', '⚠️ 無法載入歷史紀錄：' + history.error);
+                }
+            } catch (err) {
+                addMessage('ai', '⚠️ 載入紀錄時出錯。');
+            }
+        });
+
+        chatForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            addMessage('user', text);
+            chatInput.value = '';
+            chatInput.focus();
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text }),
+                });
+
+                const data = await response.json();
+                if (data.reply) {
+                    addMessage('ai', data.reply);
+                } else if (data.error) {
+                    addMessage('ai', '錯誤：' + data.error);
+                }
+            } catch (error) {
+                addMessage('ai', '伺服器錯誤，請稍後再試。');
+            }
+        });
+    </script>
+
+</body>
+
+</html>
