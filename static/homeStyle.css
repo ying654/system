@@ -239,12 +239,17 @@ header {
 
 .custom-flash {
     position: fixed;
-    text-align: center;
     top: 40px;
     left: 50%;
-    width: 15%;
     transform: translateX(-50%);
     z-index: 1050;
+
+    width: auto;
+    max-width: 90%;
+    white-space: nowrap;
+    /* 防止換行 */
+
+    text-align: center;
     padding: 12px 24px;
     border-radius: 8px;
     font-weight: bold;
