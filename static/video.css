@@ -51,8 +51,10 @@ body {
 }
 
 .logout-link:hover {
-    text-decoration: underline;
-    background-color: rgba(255, 255, 255, 0.2);
+    text-decoration: none;
+    background-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+    transition: all 0.2s ease;
 }
 
 /* 側邊欄 */
@@ -226,26 +228,6 @@ body {
 }
 
 
-.aiRobot-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    z-index: 1000;
-}
-
-.aiRobot-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    z-index: 1000;
-}
-
 .chat-window {
     font-weight: 500;
     font-family: 'Segoe UI', 'Noto Sans TC', '微軟正黑體', Arial, sans-serif;
@@ -281,9 +263,6 @@ body {
     justify-content: flex-end;
 }
 
-.logout-link:hover {
-    text-decoration: none;
-}
 
 .hidden {
     display: none;
