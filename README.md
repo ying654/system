@@ -6,7 +6,7 @@ home.jpg , homeStyle.css , home.html 是 登入註冊系統
 
 aiChat.js , aiStyle.css , aiChatRotbot 是 ChatGpt聊天頁面
 
-video.css , video.html , aiRotbot 是 影片區
+video.css , video.html , aiRotbot.png 是 影片區
 
 users.db 存放 使用者帳號密碼 ， 對話紀錄 等等
 
