@@ -4,6 +4,8 @@ body {
     margin: 0;
     padding-top: 0px;
     background-color: #f8fafc;
+    height: 100%;
+    overflow: hidden;
 }
 
 .container {
@@ -40,14 +42,23 @@ body {
     white-space: nowrap;
 }
 
+.user-label {
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 17px;
+    font-weight: 550;
+    margin: 0 8px;
+}
+
 .logout-link {
     color: #ffffff;
     text-decoration: none;
-    font-size: 14px;
-    padding: 4px 6px;
+    font-size: 15px;
+    font-weight: 550;
+    padding: 7px 12px;
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
-    margin: 0 5px;
+    margin: 0 8px;
 }
 
 .logout-link:hover {
@@ -192,19 +203,18 @@ body {
 .video-wrapper {
     background-color: #000;
     width: 100%;
+    height: 80%;
     aspect-ratio: 16 / 9;
     margin-bottom: 20px;
     border-radius: 6px;
-
-    overflow: hidden;
 }
 
 /* AI 機器人按鈕 */
 .aiRobot-btn {
     position: fixed;
     /* 固定在螢幕上，不隨滾動改變 */
-    bottom: 65px;
-    right: 15px;
+    bottom: 60px;
+    right: 45px;
     /* 靠右下角 */
     background-color: transparent;
     padding: 0;
