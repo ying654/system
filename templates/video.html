@@ -317,9 +317,26 @@
             const chatInput = document.getElementById('chat-input');
             const text = chatInput.value.trim();
             if (!text) return;
+
+            // 加入使用者訊息
             addMessage('user', text);
             chatInput.value = '';
             chatInput.focus();
+
+            // 顯示 AI 輸入中（三個點動畫）
+            const chatMessages = document.getElementById('chat-messages');
+            const typingRow = document.createElement("div");
+            typingRow.classList.add("message-row", "ai");
+            typingRow.setAttribute("id", "typingIndicator");
+
+            const typingBubble = document.createElement("div");
+            typingBubble.classList.add("bubble", "ai", "typing");
+            typingBubble.innerHTML = "<span></span><span></span><span></span>";
+
+            typingRow.appendChild(typingBubble);
+            chatMessages.appendChild(typingRow);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
             try {
                 const response = await fetch('/chat', {
                     method: 'POST',
@@ -327,15 +344,27 @@
                     body: JSON.stringify({ message: text }),
                 });
                 const data = await response.json();
+
+                // 移除輸入中提示
+                const typingEl = document.getElementById("typingIndicator");
+                if (typingEl) typingEl.remove();
+
+                // 加入 AI 真正的回覆
                 if (data.reply) {
                     addMessage('ai', data.reply);
                 } else if (data.error) {
                     addMessage('ai', '錯誤：' + data.error);
                 }
             } catch (error) {
+                // 移除輸入中提示
+                const typingEl = document.getElementById("typingIndicator");
+                if (typingEl) typingEl.remove();
+
                 addMessage('ai', '伺服器錯誤，請稍後再試。');
             }
         });
+
+
 
         // 拖曳聊天視窗
         window.addEventListener("DOMContentLoaded", () => {

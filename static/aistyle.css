@@ -169,6 +169,53 @@ body {
     background: #1d4ed8;
 }
 
+.bubble.typing {
+    background-color: #333;
+    /* 深灰背景 */
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 12px;
+}
+
+.bubble.typing span {
+    display: block;
+    width: 8px;
+    height: 8px;
+    background-color: #fff;
+    /* 白色小點，深色背景才清楚 */
+    border-radius: 50%;
+    animation: blink 1.4s infinite both;
+}
+
+.bubble.typing span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.bubble.typing span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes blink {
+
+    0%,
+    80%,
+    100% {
+        opacity: 0.2;
+        transform: scale(0.8);
+    }
+
+    40% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+
+
 @media (max-width: 600px) {
     .chat-container {
         max-width: 100%;

@@ -42,30 +42,48 @@ chatForm.addEventListener('submit', async function (e) {
     const text = chatInput.value.trim();
     if (!text) return;
 
+    // 加入使用者訊息
     addMessage('user', text);
     chatInput.value = '';
     chatInput.focus();
 
-    // 呼叫後端 API 串接 OpenAI
+    // 顯示 AI 三個點動畫
+    const typingBubble = document.createElement('div');
+    typingBubble.classList.add('bubble', 'ai', 'typing');
+    typingBubble.setAttribute('id', 'typingIndicator');
+    typingBubble.innerHTML = "<span></span><span></span><span></span>";
+    chatMessages.appendChild(typingBubble);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // 呼叫後端 API
     try {
         const response = await fetch('/chat', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text }),
         });
 
         const data = await response.json();
+
+        // 移除輸入中動畫
+        const typingEl = document.getElementById('typingIndicator');
+        if (typingEl) typingEl.remove();
+
+        // 顯示 AI 回覆
         if (data.reply) {
             addMessage('ai', data.reply);
         } else if (data.error) {
             addMessage('ai', '錯誤：' + data.error);
         }
     } catch (error) {
+        // 移除動畫
+        const typingEl = document.getElementById('typingIndicator');
+        if (typingEl) typingEl.remove();
+
         addMessage('ai', '伺服器錯誤，請稍後再試。');
     }
 });
+
 
 // 載入初始訊息 & 歷史紀錄
 window.addEventListener('DOMContentLoaded', async () => {
