@@ -240,6 +240,155 @@ body {
     filter: brightness(1.1);
 }
 
+/* 書籍推薦面板樣式 */
+.book-recommendations {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    width: 320px;
+    max-height: 70vh;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 1000;
+    border: 1px solid #e0e6ed;
+    font-family: 'Microsoft JhengHei', sans-serif;
+}
+
+.book-recommendations h3 {
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: 600;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 8px;
+}
+
+.book-item {
+    display: flex;
+    margin-bottom: 15px;
+    padding: 12px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    background: #fafbfc;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.book-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: #f0f7ff;
+}
+
+.book-cover {
+    width: 60px;
+    height: 80px;
+    background: #ddd;
+    border-radius: 4px;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 12px;
+    text-align: center;
+    background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.book-info {
+    flex: 1;
+}
+
+.book-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #2c3e50;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.book-author {
+    font-size: 12px;
+    color: #7f8c8d;
+    margin-bottom: 6px;
+}
+
+.book-description {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.book-source {
+    font-size: 10px;
+    color: #3498db;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.loading-books {
+    text-align: center;
+    color: #7f8c8d;
+    font-style: italic;
+    padding: 20px;
+}
+
+.no-books {
+    text-align: center;
+    color: #95a5a6;
+    font-style: italic;
+    padding: 20px;
+}
+
+.keywords-display {
+    background: #ecf0f1;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-size: 12px;
+    color: #2c3e50;
+}
+
+.keywords-display strong {
+    color: #3498db;
+}
+
+/* 響應式設計 */
+@media (max-width: 1400px) {
+    .book-recommendations {
+        width: 280px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .book-recommendations {
+        position: relative;
+        top: 0;
+        right: 0;
+        width: 100%;
+        max-height: none;
+        margin-top: 20px;
+    }
+}
+
+/* 調整主容器以適應書籍推薦面板 */
+.container {
+    margin-right: 340px;
+}
+
+@media (max-width: 1200px) {
+    .container {
+        margin-right: 0;
+        flex-direction: column;
+    }
+}
+
 #bookRecommendations {
     font-weight: 500;
     font-family: 'Segoe UI', 'Noto Sans TC', '微軟正黑體', Arial, sans-serif;
