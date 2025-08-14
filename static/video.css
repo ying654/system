@@ -195,9 +195,8 @@ body {
 /* 主體影片區 */
 .main {
     flex-grow: 1;
-    padding: 0px 10px;
-    background-color: #ffffff;
-
+    min-width: 300px;
+    /* 保證至少 300px 寬 */
 }
 
 .video-wrapper {
@@ -232,18 +231,40 @@ body {
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
+#bookstore {
+    text-decoration: none;
+}
+
 .aiRobot-btn img:hover {
     transform: scale(1.1);
     filter: brightness(1.1);
 }
 
+#bookRecommendations {
+    font-weight: 500;
+    font-family: 'Segoe UI', 'Noto Sans TC', '微軟正黑體', Arial, sans-serif;
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    height: 250px;
+    width: 275px;
+    max-height: 480px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1001;
+    cursor: default;
+}
 
 .chat-window {
     font-weight: 500;
     font-family: 'Segoe UI', 'Noto Sans TC', '微軟正黑體', Arial, sans-serif;
     position: fixed;
-    bottom: 80px;
-    right: 20px;
+    bottom: 10px;
+    right: 10px;
     height: 500px;
     width: 400px;
     max-height: 480px;

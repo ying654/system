@@ -5,6 +5,157 @@
     <meta charset="UTF-8">
     <title>教學影片區</title>
     <link rel="stylesheet" href="/static/video.css">
+    <style>
+        /* 書籍推薦面板樣式 */
+        .book-recommendations {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            width: 320px;
+            max-height: 70vh;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 1000;
+            border: 1px solid #e0e6ed;
+            font-family: 'Microsoft JhengHei', sans-serif;
+        }
+
+        .book-recommendations h3 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+        }
+
+        .book-item {
+            display: flex;
+            margin-bottom: 15px;
+            padding: 12px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background: #fafbfc;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .book-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: #f0f7ff;
+        }
+
+        .book-cover {
+            width: 60px;
+            height: 80px;
+            background: #ddd;
+            border-radius: 4px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 12px;
+            text-align: center;
+            background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .book-info {
+            flex: 1;
+        }
+
+        .book-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2c3e50;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .book-author {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 6px;
+        }
+
+        .book-description {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .book-source {
+            font-size: 10px;
+            color: #3498db;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .loading-books {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        .no-books {
+            text-align: center;
+            color: #95a5a6;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        .keywords-display {
+            background: #ecf0f1;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #2c3e50;
+        }
+
+        .keywords-display strong {
+            color: #3498db;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 1400px) {
+            .book-recommendations {
+                width: 280px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .book-recommendations {
+                position: relative;
+                top: 0;
+                right: 0;
+                width: 100%;
+                max-height: none;
+                margin-top: 20px;
+            }
+        }
+
+        /* 調整主容器以適應書籍推薦面板 */
+        .container {
+            margin-right: 340px;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                margin-right: 0;
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -12,10 +163,19 @@
         <div class="system-title">機器學習教學平台</div>
         <div>
             <span class="user-label">歡迎，{{ username }}</span>
-            <a href="{{ url_for('logout') }}" class="logout-link">登出</a>
             <a href="{{ url_for('dashboard') }}" class="logout-link">AI對話</a>
+            <a href="{{ url_for('logout') }}" class="logout-link">登出</a>
         </div>
     </div>
+
+    <!-- 書籍推薦面板 -->
+    <div class="book-recommendations" id="bookRecommendations">
+        <h3>📚 相關書籍推薦</h3>
+        <div id="booksList">
+            <div class="no-books">開始對話即可獲得書籍推薦 ✨</div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="sidebar">
             <h2>機器學習 &gt;</h2>
@@ -178,6 +338,7 @@
                     <button data-src="https://www.youtube.com/embed/k1xsoog2y3Q">Grid Search (網格搜尋) Python實作</button>
                 </div>
             </div>
+
             <!-- AI 機器人按鈕 -->
             <button class="aiRobot-btn" onclick="toggleChat()" title="開啟 AI 聊天">
                 <img src="/static/aiRobot.png" alt="AI 機器人" />
@@ -196,10 +357,7 @@
                     <button type="button" id="clearBtn">清除</button>
                 </form>
             </div>
-
-
         </div>
-
 
         <!-- 影片與聊天區 -->
         <main class="main">
@@ -210,15 +368,63 @@
                     frameborder="0" allowfullscreen>
                 </iframe>
             </div>
-
-
         </main>
     </div>
 
     <script>
-        // 綜合所有 DOMContentLoaded 的初始化內容為一段，避免重複與潛在順序錯誤
+        // 書籍推薦功能
+        async function getBookRecommendations(userMessage) {
+            try {
+                const response = await fetch('/get_book_recommendations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userMessage }),
+                });
 
-        // 初始化所有功能
+                const data = await response.json();
+                displayBookRecommendations(data.books, data.keywords);
+            } catch (error) {
+                console.error('獲取書籍推薦失敗:', error);
+            }
+        }
+        function displayBookRecommendations(books, keywords) {
+            const booksList = document.getElementById('booksList');
+
+            if (!books || books.length === 0) {
+                booksList.innerHTML = '<div class="no-books">暫無相關書籍推薦</div>';
+                return;
+            }
+
+            let html = '';
+
+            if (keywords) {
+                html += `<div class="keywords-display"><strong>關鍵詞:</strong> ${keywords}</div>`;
+            }
+
+            books.forEach(book => {
+                html += `
+                    <a id = "bookstore" href="${book.link}">
+                       <div class="book-item">
+                        <img class="book-cover" src="${book.image}" alt="${book.title}">
+                        <div class="book-info">
+                            <div class="book-title">${book.title}</div>
+                            <div class="book-author">作者: ${book.author}</div>
+                            <div class="book-source">${book.source || '推薦書籍'}</div>
+                        </div>
+                    </div> 
+                    </a>
+                `;
+            });
+
+            booksList.innerHTML = html;
+        }
+
+        function showBookLoading() {
+            const booksList = document.getElementById('booksList');
+            booksList.innerHTML = '<div class="loading-books">🔍 正在搜尋相關書籍...</div>';
+        }
+
+        // 綜合所有 DOMContentLoaded 的初始化內容為一段，避免重複與潛在順序錯誤
         window.addEventListener("DOMContentLoaded", function () {
             // dropdown 點擊展開/收合
             const dropdowns = document.querySelectorAll(".dropdown-btn");
@@ -296,6 +502,11 @@
             const chatInput = document.getElementById('chat-input');
             chatMessages.innerHTML = '';
             chatInput.value = '';
+
+            // 清除書籍推薦
+            const booksList = document.getElementById('booksList');
+            booksList.innerHTML = '<div class="no-books">開始對話即可獲得書籍推薦 ✨</div>';
+
             try {
                 const res = await fetch('/chat/clear', { method: 'POST' });
                 const result = await res.json();
@@ -323,6 +534,9 @@
             chatInput.value = '';
             chatInput.focus();
 
+            // 顯示書籍推薦載入狀態
+            showBookLoading();
+
             // 顯示 AI 輸入中（三個點動畫）
             const chatMessages = document.getElementById('chat-messages');
             const typingRow = document.createElement("div");
@@ -338,22 +552,27 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
             try {
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text }),
-                });
-                const data = await response.json();
+                // 同時發送聊天和書籍推薦請求
+                const [chatResponse, bookResponse] = await Promise.all([
+                    fetch('/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: text }),
+                    }),
+                    getBookRecommendations(text)
+                ]);
+
+                const chatData = await chatResponse.json();
 
                 // 移除輸入中提示
                 const typingEl = document.getElementById("typingIndicator");
                 if (typingEl) typingEl.remove();
 
                 // 加入 AI 真正的回覆
-                if (data.reply) {
-                    addMessage('ai', data.reply);
-                } else if (data.error) {
-                    addMessage('ai', '錯誤：' + data.error);
+                if (chatData.reply) {
+                    addMessage('ai', chatData.reply);
+                } else if (chatData.error) {
+                    addMessage('ai', '錯誤：' + chatData.error);
                 }
             } catch (error) {
                 // 移除輸入中提示
@@ -361,10 +580,12 @@
                 if (typingEl) typingEl.remove();
 
                 addMessage('ai', '伺服器錯誤，請稍後再試。');
+
+                // 如果聊天失敗，也清除書籍推薦的載入狀態
+                const booksList = document.getElementById('booksList');
+                booksList.innerHTML = '<div class="no-books">獲取推薦失敗，請稍後再試</div>';
             }
         });
-
-
 
         // 拖曳聊天視窗
         window.addEventListener("DOMContentLoaded", () => {
@@ -397,7 +618,6 @@
             });
         });
     </script>
-
 
 </body>
 
