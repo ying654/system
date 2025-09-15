@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教師分析後台</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='teacher_analytics.css') }}">
+</head>
+
+<body>
+    <div class="header">
+        <h1>教師分析後台</h1>
+        <p class="welcome">歡迎，老師！這裡是學生學習情況總覽</p>
+        <div class="header-controls">
+            <button class="refresh-btn" onclick="loadAnalytics()">
+                <span id="refresh-text">重新載入</span>
+            </button>
+            <a href="/logout" class="logout-btn">登出</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="error-container"></div>
+
+        <!-- 統計卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>📚 活躍學生數</h3>
+                <div class="number" id="activeStudents">-</div>
+                <div class="description">過去7天內有互動</div>
+            </div>
+            <div class="stat-card">
+                <h3>💬 總對話次數</h3>
+                <div class="number" id="totalConversations">-</div>
+                <div class="description">累計學習互動</div>
+            </div>
+            <div class="stat-card">
+                <h3>🏆 平均理解程度</h3>
+                <div class="number" id="avgLevel">-</div>
+                <div class="description">基於鷹架分析</div>
+            </div>
+            <div class="stat-card">
+                <h3>📖 熱門學習單元</h3>
+                <div class="number" id="popularUnit" style="font-size: 18px; line-height: 1.2;">-</div>
+                <div class="description">最多討論的主題</div>
+            </div>
+        </div>
+
+        <!-- 圖表區域 -->
+        <div class="charts-section">
+            <div class="chart-card">
+                <h3>📊 鷹架類型分佈</h3>
+                <div class="chart-container">
+                    <canvas id="scaffoldingChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>📈 學習單元熱門度</h3>
+                <div class="chart-container">
+                    <canvas id="unitsChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>🎯 理解程度分佈</h3>
+                <div class="chart-container">
+                    <canvas id="levelsChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>📅 每日學習活動</h3>
+                <div class="chart-container">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 學生詳細資料表 -->
+        <div class="student-table">
+            <h3>👥 學生學習詳情</h3>
+            <div class="table-container">
+                <table id="studentTable">
+                    <thead>
+                        <tr>
+                            <th>學生</th>
+                            <th>總互動次數</th>
+                            <th>主要鷹架類型</th>
+                            <th>當前理解程度</th>
+                            <th>最常討論單元</th>
+                            <th>最後活動時間</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <tr>
+                            <td colspan="6" class="loading">
+                                <span class="loading-spinner"></span> 載入中...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='teacher_analytics.js') }}"></script>
+</body>
+
+</html>
