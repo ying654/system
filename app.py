@@ -16,6 +16,8 @@ import re
 import time
 import secrets
 from urllib.parse import quote
+from datetime import datetime, timedelta
+from collections import Counter
 
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
@@ -589,7 +591,6 @@ def clear_chat():
     return jsonify({"success": True})
 
 
-# 建立資料庫，儲存帳號密碼、對話紀錄等
 def init_db():
     if not os.path.exists(DB_NAME):
         conn = sqlite3.connect(DB_NAME)
@@ -614,12 +615,33 @@ def init_db():
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )"""
         )
+
+        # 添加預設的teacher帳號
+        teacher_password = hash_password("teacher")  # 密碼也是teacher
+        c.execute(
+            "INSERT INTO users (username, password) VALUES (?, ?)",
+            ("teacher", teacher_password),
+        )
+
         conn.commit()
         conn.close()
+        print("資料庫初始化完成，已創建teacher帳號")
     else:
         # 檢查是否需要更新資料庫結構
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
+
+        # 檢查teacher帳號是否存在
+        c.execute("SELECT * FROM users WHERE username = 'teacher'")
+        teacher_exists = c.fetchone()
+
+        if not teacher_exists:
+            teacher_password = hash_password("teacher")
+            c.execute(
+                "INSERT INTO users (username, password) VALUES (?, ?)",
+                ("teacher", teacher_password),
+            )
+            print("已添加teacher帳號")
 
         # 檢查是否有新的欄位
         c.execute("PRAGMA table_info(conversations)")
@@ -680,6 +702,265 @@ def register():
     return render_template("home.html")
 
 
+def get_basic_stats(cursor):
+    """獲取基本統計數據"""
+    # 活躍學生數（過去7天）
+    week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute(
+        """
+        SELECT COUNT(DISTINCT username) 
+        FROM conversations 
+        WHERE username != 'teacher' AND timestamp > ?
+    """,
+        (week_ago,),
+    )
+    active_students = cursor.fetchone()[0]
+
+    # 總對話次數
+    cursor.execute("SELECT COUNT(*) FROM conversations WHERE username != 'teacher'")
+    total_conversations = cursor.fetchone()[0]
+
+    # 最熱門的學習單元
+    cursor.execute(
+        """
+        SELECT learning_unit, COUNT(*) as count 
+        FROM conversations 
+        WHERE username != 'teacher' AND learning_unit IS NOT NULL 
+        GROUP BY learning_unit 
+        ORDER BY count DESC 
+        LIMIT 1
+    """
+    )
+    popular_result = cursor.fetchone()
+    popular_unit = popular_result[0] if popular_result else "無"
+
+    # 平均理解程度
+    level_mapping = {"初學者": 1, "進階學習者": 2, "熟練者": 3}
+    cursor.execute(
+        """
+        SELECT understanding_level 
+        FROM conversations 
+        WHERE username != 'teacher' AND understanding_level IS NOT NULL
+    """
+    )
+    levels = [level_mapping.get(row[0], 0) for row in cursor.fetchall()]
+    avg_level = round(sum(levels) / len(levels), 1) if levels else 0
+
+    return {
+        "activeStudents": active_students,
+        "totalConversations": total_conversations,
+        "popularUnit": popular_unit,
+        "avgLevel": avg_level,
+    }
+
+
+def get_scaffolding_stats(cursor):
+    """獲取鷹架類型統計"""
+    cursor.execute(
+        """
+        SELECT scaffolding_type, COUNT(*) as count 
+        FROM conversations 
+        WHERE username != 'teacher' AND scaffolding_type IS NOT NULL 
+        GROUP BY scaffolding_type
+    """
+    )
+    return dict(cursor.fetchall())
+
+
+def get_unit_stats(cursor):
+    """獲取學習單元統計"""
+    cursor.execute(
+        """
+        SELECT learning_unit, COUNT(*) as count 
+        FROM conversations 
+        WHERE username != 'teacher' AND learning_unit IS NOT NULL 
+        GROUP BY learning_unit 
+        ORDER BY count DESC
+    """
+    )
+    return dict(cursor.fetchall())
+
+
+def get_level_stats(cursor):
+    """獲取理解程度統計"""
+    cursor.execute(
+        """
+        SELECT understanding_level, COUNT(*) as count 
+        FROM conversations 
+        WHERE username != 'teacher' AND understanding_level IS NOT NULL 
+        GROUP BY understanding_level
+    """
+    )
+    return dict(cursor.fetchall())
+
+
+def get_daily_activity(cursor):
+    """獲取每日活動統計（過去7天）"""
+    daily_stats = {}
+    for i in range(7):
+        date = datetime.now() - timedelta(days=i)
+        date_str = date.strftime("%Y-%m-%d")
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) 
+            FROM conversations 
+            WHERE username != 'teacher' 
+            AND DATE(timestamp) = ?
+        """,
+            (date_str,),
+        )
+
+        count = cursor.fetchone()[0]
+        daily_stats[date.strftime("%m/%d")] = count
+
+    # 反轉順序，讓最舊的日期在前面
+    return dict(reversed(list(daily_stats.items())))
+
+
+def get_student_details(cursor):
+    """獲取學生詳細資料"""
+    cursor.execute(
+        "SELECT DISTINCT username FROM conversations WHERE username != 'teacher'"
+    )
+    usernames = [row[0] for row in cursor.fetchall()]
+
+    students = []
+    for username in usernames:
+        # 總對話次數
+        cursor.execute(
+            "SELECT COUNT(*) FROM conversations WHERE username = ?", (username,)
+        )
+        total_conversations = cursor.fetchone()[0]
+
+        # 主要鷹架類型
+        cursor.execute(
+            """
+            SELECT scaffolding_type, COUNT(*) as count 
+            FROM conversations 
+            WHERE username = ? AND scaffolding_type IS NOT NULL 
+            GROUP BY scaffolding_type 
+            ORDER BY count DESC 
+            LIMIT 1
+        """,
+            (username,),
+        )
+        main_scaffolding_result = cursor.fetchone()
+        main_scaffolding = (
+            main_scaffolding_result[0] if main_scaffolding_result else "未知"
+        )
+
+        # 當前理解程度（最新的）
+        cursor.execute(
+            """
+            SELECT understanding_level 
+            FROM conversations 
+            WHERE username = ? AND understanding_level IS NOT NULL 
+            ORDER BY timestamp DESC 
+            LIMIT 1
+        """,
+            (username,),
+        )
+        current_level_result = cursor.fetchone()
+        current_level = current_level_result[0] if current_level_result else "未知"
+
+        # 最常討論的單元
+        cursor.execute(
+            """
+            SELECT learning_unit, COUNT(*) as count 
+            FROM conversations 
+            WHERE username = ? AND learning_unit IS NOT NULL 
+            GROUP BY learning_unit 
+            ORDER BY count DESC 
+            LIMIT 1
+        """,
+            (username,),
+        )
+        favorite_unit_result = cursor.fetchone()
+        favorite_unit = favorite_unit_result[0] if favorite_unit_result else "無"
+
+        # 最後活動時間
+        cursor.execute(
+            """
+            SELECT MAX(timestamp) 
+            FROM conversations 
+            WHERE username = ?
+        """,
+            (username,),
+        )
+        last_activity = cursor.fetchone()[0]
+
+        students.append(
+            {
+                "username": username,
+                "total_conversations": total_conversations,
+                "main_scaffolding": main_scaffolding,
+                "current_level": current_level,
+                "favorite_unit": favorite_unit,
+                "last_activity": last_activity,
+            }
+        )
+
+    # 按總對話次數排序
+    students.sort(key=lambda x: x["total_conversations"], reverse=True)
+    return students
+
+
+# 教師儀表板頁面
+@app.route("/teacher")
+def teacher_dashboard():
+    if "username" not in session or session["username"] != "teacher":
+        flash("無權限訪問", "alert alert-danger")
+        return redirect(url_for("home"))
+    return render_template("teacher_analytics.html", username=session["username"])
+
+
+# 教師分析API
+@app.route("/teacher_analytics")
+def teacher_analytics():
+    if "username" not in session or session["username"] != "teacher":
+        return jsonify({"error": "無權限"}), 403
+
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+
+        # 基本統計數據
+        stats = get_basic_stats(c)
+
+        # 鷹架類型統計
+        scaffolding_stats = get_scaffolding_stats(c)
+
+        # 學習單元統計
+        unit_stats = get_unit_stats(c)
+
+        # 理解程度統計
+        level_stats = get_level_stats(c)
+
+        # 每日活動統計
+        daily_activity = get_daily_activity(c)
+
+        # 學生詳細資料
+        students = get_student_details(c)
+
+        conn.close()
+
+        return jsonify(
+            {
+                "stats": stats,
+                "scaffolding_stats": scaffolding_stats,
+                "unit_stats": unit_stats,
+                "level_stats": level_stats,
+                "daily_activity": daily_activity,
+                "students": students,
+            }
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# 修改登入路由，添加教師判斷
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -697,10 +978,14 @@ def login():
 
         if user:
             session["username"] = username
-            return redirect(url_for("video"))
+            # 如果是教師帳號，導向教師分析頁面
+            if username == "teacher":
+                return redirect(url_for("teacher_dashboard"))
+            else:
+                return redirect(url_for("video"))
         else:
             flash("帳號或密碼錯誤", "alert alert-danger")
-            return redirect(url_for("home"))  # 導回首頁，再顯示錯誤訊息
+            return redirect(url_for("home"))
 
     return redirect(url_for("home"))
 
