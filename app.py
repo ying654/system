@@ -714,13 +714,14 @@ def get_basic_stats(cursor):
     """,
         (week_ago,),
     )
+    # 過去7天的學生人數
     active_students = cursor.fetchone()[0]
 
     # 總對話次數
     cursor.execute("SELECT COUNT(*) FROM conversations WHERE username != 'teacher'")
     total_conversations = cursor.fetchone()[0]
 
-    # 最熱門的學習單元
+    # 最熱門的學習單元 挑出數量最多的學習單元
     cursor.execute(
         """
         SELECT learning_unit, COUNT(*) as count 
@@ -826,6 +827,8 @@ def get_student_details(cursor):
     usernames = [row[0] for row in cursor.fetchall()]
 
     students = []
+
+    # 把每個學生抓出來，看他的資訊
     for username in usernames:
         # 總對話次數
         cursor.execute(
@@ -906,7 +909,7 @@ def get_student_details(cursor):
     return students
 
 
-# 教師儀表板頁面
+# 教師儀表板頁面 避免透過更改網址進入教師帳號   8====D
 @app.route("/teacher")
 def teacher_dashboard():
     if "username" not in session or session["username"] != "teacher":

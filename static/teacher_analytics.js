@@ -1,7 +1,7 @@
 let charts = {}; // 儲存圖表實例
 let isLoading = false; // 防止重複載入
 
-// 載入所有分析數據
+// 按下 重新載入的按鈕 會跑這個function
 async function loadAnalytics() {
     if (isLoading) return;
 
@@ -17,6 +17,7 @@ async function loadAnalytics() {
         document.getElementById('studentTableBody').innerHTML =
             '<tr><td colspan="6" class="loading"><span class="loading-spinner"></span> 載入中...</td></tr>';
 
+        // 跟後端要資料 基本統計數據、鷹架類型統計之類的 8===D
         const response = await fetch('/teacher_analytics', {
             method: 'GET',
             headers: {
@@ -57,6 +58,7 @@ function showError(message) {
     errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
 }
 
+//顯示 上排四張卡片的數字、文字
 function updateStatsCards(stats) {
     document.getElementById('activeStudents').textContent = stats.activeStudents || 0;
     document.getElementById('totalConversations').textContent = stats.totalConversations || 0;

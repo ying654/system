@@ -195,12 +195,12 @@ tr:hover {
     padding: 4px 8px;
     border-radius: 15px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 545;
 }
 
 .scaffolding-badge.差異鷹架 {
-    background: #e8f5e8;
-    color: #2d6a2d;
+    background: #8de18d;
+    color: #155724;
 }
 
 .scaffolding-badge.重複鷹架 {
@@ -209,20 +209,20 @@ tr:hover {
 }
 
 .scaffolding-badge.協同鷹架 {
-    background: #d1ecf1;
-    color: #0c5460;
+    background: #f8d7da;
+    color: #721c24;
 }
 
 .level-badge {
     padding: 4px 8px;
     border-radius: 15px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 545;
 }
 
 .level-badge.初學者 {
-    background: #f8d7da;
-    color: #721c24;
+    background: #8de18d;
+    color: #155724;
 }
 
 .level-badge.進階學習者 {
@@ -231,8 +231,8 @@ tr:hover {
 }
 
 .level-badge.熟練者 {
-    background: #d4edda;
-    color: #155724;
+    background: #f8d7da;
+    color: #721c24;
 }
 
 .loading {
