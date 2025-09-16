@@ -813,7 +813,9 @@ def get_daily_activity(cursor):
         )
 
         count = cursor.fetchone()[0]
-        daily_stats[date.strftime("%m/%d")] = count
+        daily_stats[date.strftime("%m/%d")] = (
+            count  # daily_stats[9/15] = 4 => 9/15 有 4個人
+        )
 
     # 反轉順序，讓最舊的日期在前面
     return dict(reversed(list(daily_stats.items())))
@@ -928,7 +930,7 @@ def teacher_analytics():
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
 
-        # 基本統計數據
+        # 活躍學生數、平均理解、熱門單元、對話次數
         stats = get_basic_stats(c)
 
         # 鷹架類型統計
@@ -943,7 +945,7 @@ def teacher_analytics():
         # 每日活動統計
         daily_activity = get_daily_activity(c)
 
-        # 學生詳細資料
+        # 每個學生的 總對話次數、鷹架、理解程度、最常討論單元、上次登入時間
         students = get_student_details(c)
 
         conn.close()
@@ -963,7 +965,7 @@ def teacher_analytics():
         return jsonify({"error": str(e)}), 500
 
 
-# 修改登入路由，添加教師判斷
+# 修改登入路由，添加教師判斷，是教師帳號 導向分析網頁。
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":

@@ -80,16 +80,16 @@ function drawCharts(data) {
 
     // 等待DOM更新後再繪製圖表
     setTimeout(() => {
-        // 鷹架類型分佈圓餅圖
+        // 鷹架類型分佈圓餅圖 (鷹架類型、統計次數)
         drawScaffoldingChart(data.scaffolding_stats || {});
 
-        // 學習單元長條圖
+        // 學習單元長條圖 (學習單元、統計次數)
         drawUnitsChart(data.unit_stats || {});
 
-        // 理解程度分佈圓餅圖
+        // 理解程度分佈圓餅圖 (熟練等級、統計次數)
         drawLevelsChart(data.level_stats || {});
 
-        // 每日活動折線圖
+        // 每日活動折線圖 (幾月幾號、統計次數)
         drawDailyChart(data.daily_activity || {});
     }, 100);
 }
@@ -101,9 +101,10 @@ function drawScaffoldingChart(scaffoldingData) {
     const ctxContext = ctx.getContext('2d');
     if (!ctxContext) return;
 
-    const labels = Object.keys(scaffoldingData);
-    const values = Object.values(scaffoldingData);
+    const labels = Object.keys(scaffoldingData);//個別 鷹架類型
+    const values = Object.values(scaffoldingData);//個別 統計次數
 
+    //沒東西能顯示
     if (labels.length === 0) {
         ctxContext.clearRect(0, 0, ctx.width, ctx.height);
         ctxContext.font = "16px Arial";
@@ -113,6 +114,7 @@ function drawScaffoldingChart(scaffoldingData) {
         return;
     }
 
+    //有東西就畫圖
     charts.scaffolding = new Chart(ctxContext, {
         type: 'doughnut',
         data: {
