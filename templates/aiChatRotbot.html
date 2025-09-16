@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>學習迷思 聊天介面</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='aiStyle.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='aiChatRotbot.css') }}">
 </head>
 
 <body>
@@ -22,15 +22,7 @@
             <button id="clearBtn">清除</button>
         </form>
     </div>
-    <script src="{{ url_for('static', filename='aiChat.js') }}"></script>
+    <script src="{{ url_for('static', filename='aiChatRotbot.js') }}"></script>
 </body>
-<script>
-    function logout() {
-        window.location.href = '/'; // 跳轉到 home.html
-    }
-    function goToVideo() {
-        window.location.href = '/video';
-    }
-</script>
 
 </html>

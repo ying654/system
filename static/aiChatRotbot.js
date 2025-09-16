@@ -102,3 +102,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         addMessage('ai', '⚠️ 載入紀錄時出錯。');
     }
 });
+function logout() {
+    window.location.href = '/'; // 跳轉到 home.html
+}
+function goToVideo() {
+    window.location.href = '/video';
+}
