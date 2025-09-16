@@ -121,7 +121,7 @@ function drawScaffoldingChart(scaffoldingData) {
             labels: labels,
             datasets: [{
                 data: values,
-                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
+                backgroundColor: ['#FF6384', '#8de18d', '#FFCE56', '#4BC0C0'],
                 borderWidth: 2,
                 borderColor: '#fff'
             }]
@@ -231,7 +231,7 @@ function drawLevelsChart(levelData) {
             labels: labels,
             datasets: [{
                 data: values,
-                backgroundColor: ['#FF6384', '#FFCE56', '#4BC0C0', '#36A2EB'],
+                backgroundColor: ['#8de18d', '#FF6384', '#FFCE56', '#36A2EB'],
                 borderWidth: 2,
                 borderColor: '#fff'
             }]
