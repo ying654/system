@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>學習迷思 聊天介面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/aiChatRotbot.css') }}">
+</head>
+
+<body>
+    <div class="chat-container">
+        <div class="nav-button">
+            <button class="btn" onclick="goToVideo()">前往影片區</button>
+            <button class="btn" onclick="logout()">登出</button>
+        </div>
+
+        <div id="chat-messages" class="chat-messages"></div>
+        <form id="chat-form" class="chat-form" autocomplete="off">
+            <input id="chat-input" type="text" placeholder="輸入訊息..." autocomplete="off" />
+            <button type="submit">發送</button>
+            <button id="clearBtn">清除</button>
+        </form>
+    </div>
+    <script src="{{ url_for('static', filename='js/aiChatRotbot.js') }}"></script>
+</body>
+
+</html>
