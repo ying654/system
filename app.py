@@ -367,7 +367,7 @@ def chat():
 
 
 
-
+# 給出對應的鷹架回應
 def _postprocess_complete_sentences(text):
     """確保回覆不以半句收尾：截到最後完整句，若沒有則補上句號。"""
     if not text:
