@@ -25,10 +25,167 @@ api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
-
 DB_NAME = "users.db"
 
-###################################################################### 鷹架理論相關的學習單元定義
+
+# 密碼 hash
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+# 資料庫初始化
+def init_db():
+    if not os.path.exists(DB_NAME):
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute(
+            """CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL
+            )"""
+        )
+        c.execute(
+            """CREATE TABLE conversations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                user_message TEXT NOT NULL,
+                bot_reply TEXT NOT NULL,
+                learning_unit TEXT,
+                scaffolding_type TEXT,
+                understanding_level TEXT,
+                analysis_reason TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"""
+        )
+
+        # 添加預設的teacher帳號
+        teacher_password = hash_password("teacher")  # 密碼也是teacher
+        c.execute(
+            "INSERT INTO users (username, password) VALUES (?, ?)",
+            ("teacher", teacher_password),
+        )
+
+        conn.commit()
+        conn.close()
+        print("資料庫初始化完成，已創建teacher帳號")
+    else:
+        # 檢查是否需要更新資料庫結構
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+
+        # 檢查teacher帳號是否存在
+        c.execute("SELECT * FROM users WHERE username = 'teacher'")
+        teacher_exists = c.fetchone()
+
+        if not teacher_exists:
+            teacher_password = hash_password("teacher")
+            c.execute(
+                "INSERT INTO users (username, password) VALUES (?, ?)",
+                ("teacher", teacher_password),
+            )
+            print("已添加teacher帳號")
+
+        # 檢查是否有新的欄位
+        c.execute("PRAGMA table_info(conversations)")
+        columns = [column[1] for column in c.fetchall()]
+
+        new_columns = [
+            ("learning_unit", "TEXT"),
+            ("scaffolding_type", "TEXT"),
+            ("understanding_level", "TEXT"),
+            ("analysis_reason", "TEXT"),
+        ]
+
+        for col_name, col_type in new_columns:
+            if col_name not in columns:
+                c.execute(f"ALTER TABLE conversations ADD COLUMN {col_name} {col_type}")
+                print(f"已新增欄位: {col_name}")
+
+        conn.commit()
+        conn.close()
+
+
+###########################################################################  => home
+# 登入註冊畫面
+@app.route("/")
+def home():
+    return render_template("home.html")
+
+
+# 登入API
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = hash_password(request.form["password"])
+
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute(
+            "SELECT * FROM users WHERE username = ? AND password = ?",
+            (username, password),
+        )
+        user = c.fetchone()
+        conn.close()
+
+        if user:
+            session["username"] = username
+            # 如果是教師帳號，導向教師分析頁面
+            if username == "teacher":
+                return redirect(url_for("teacher_dashboard"))
+            else:
+                return redirect(url_for("video"))
+        else:
+            flash("帳號或密碼錯誤", "alert alert-danger")
+            return redirect(url_for("home"))
+
+    return redirect(url_for("home"))
+
+
+# 註冊API
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = hash_password(request.form["password"])
+        try:
+            conn = sqlite3.connect(DB_NAME)
+            c = conn.cursor()
+            c.execute(
+                "INSERT INTO users (username, password) VALUES (?, ?)",
+                (username, password),
+            )
+            conn.commit()
+            conn.close()
+            flash("註冊成功，請登入！", "alert alert-success")
+            return render_template("home.html")
+        except sqlite3.IntegrityError:
+            flash("使用者名稱已存在", "alert alert-danger")
+    return render_template("home.html")
+
+
+###########################################################################
+
+
+###########################################################################  => video
+# 影片區
+@app.route("/video")
+def video():
+    if "username" not in session:
+        return redirect(url_for("home"))
+    return render_template("video.html", username=session["username"])
+
+
+# 登出按鈕
+@app.route("/logout")
+def logout():
+    session.pop("username", None)
+    flash("已登出", "alert alert-success")
+    return render_template("home.html")
+
+
+# 鷹架理論
 LEARNING_UNITS = {
     "資料預處理": {
         "keywords": [
@@ -145,99 +302,71 @@ def identify_learning_unit(user_message):
     return "通用概念"  # 預設單元
 
 
-def get_user_learning_history(username):
-    """獲取使用者的學習歷史記錄"""
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute(
-        """
-        SELECT user_message, learning_unit, scaffolding_type, understanding_level 
-        FROM conversations 
-        WHERE username = ? 
-        ORDER BY timestamp DESC 
-        LIMIT 10
-    """,
-        (username,),
-    )
+# 儲存聊天資料 - 加入鷹架理論分析API
+@app.route("/chat", methods=["POST"])
+def chat():
+    if "username" not in session:
+        return jsonify({"error": "未登入"}), 401
 
-    history = c.fetchall()
-    conn.close()
-
-    return history
-
-
-def analyze_scaffolding_need(user_message, learning_unit, user_history, username):
-    """分析需要何種鷹架支持"""
-
-    # 準備分析用的資料
-    analysis_prompt = f"""
-你是一位機器學習教育專家，需要判斷學生需要何種鷹架支持。請根據以下資訊分析：
-
-學習單元：{learning_unit}
-單元難度：{LEARNING_UNITS.get(learning_unit, {}).get('difficulty_level', '未知')}
-前置需求：{LEARNING_UNITS.get(learning_unit, {}).get('prerequisites', [])}
-學生問題：{user_message}
-
-學習歷史：
-{[f"問題：{h[0]}，單元：{h[1]}，鷹架類型：{h[2]}，理解程度：{h[3]}" for h in user_history[:5]]}
-
-請判斷學生需要以下哪種鷹架支持：
-
-1. **差異鷹架（Differentiated Scaffolding）**：
-   - 適用於：學生對概念完全陌生，需要從基礎開始建構
-   - 特徵：提問基礎概念、缺乏前置知識、表達困惑
-
-2. **重複鷹架（Repetitive Scaffolding）**：
-   - 適用於：學生有基本理解但需要加深印象和鞏固
-   - 特徵：重複詢問類似問題、理解不夠深入、需要練習
-
-3. **協同鷹架（Collaborative Scaffolding）**：
-   - 適用於：學生有良好基礎，可以進行深入討論和應用
-   - 特徵：提出進階問題、想要實際應用、能夠思辨
-
-請只回答以下格式：
-鷹架類型：[差異鷹架/重複鷹架/協同鷹架]
-理由：[簡短說明為何選擇此鷹架類型]
-理解程度：[初學者/進階學習者/熟練者]
-"""
+    username = session["username"]
+    user_message = request.json.get("message")
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "你是鷹架理論專家，專門分析學生的學習需求。",
-                },
-                {"role": "user", "content": analysis_prompt},
-            ],
-            max_tokens=200,
-            temperature=0.3,
+        # 1. 識別學習單元
+        learning_unit = identify_learning_unit(user_message)
+
+        # 2. 獲取使用者學習歷史
+        user_history = get_user_learning_history(username)
+
+        # 3. 分析需要的鷹架類型
+        scaffolding_type, understanding_level, analysis_reason = (
+            analyze_scaffolding_need(
+                user_message, learning_unit, user_history, username
+            )
         )
 
-        analysis_result = response.choices[0].message.content.strip()
+        # 4. 根據鷹架類型生成回應
+        reply = generate_scaffolded_response(
+            user_message, learning_unit, scaffolding_type, understanding_level
+        )
 
-        # 解析回應
-        scaffolding_type = "差異鷹架"  # 預設值
-        understanding_level = "初學者"  # 預設值
+        # 5. 儲存到資料庫（包含鷹架資訊）
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute(
+            """
+            INSERT INTO conversations 
+            (username, user_message, bot_reply, learning_unit, scaffolding_type, understanding_level, analysis_reason) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+            (
+                username,
+                user_message,
+                reply,
+                learning_unit,
+                scaffolding_type,
+                understanding_level,
+                analysis_reason,
+            ),
+        )
+        conn.commit()
+        conn.close()
 
-        if "重複鷹架" in analysis_result:
-            scaffolding_type = "重複鷹架"
-            understanding_level = "進階學習者"
-        elif "協同鷹架" in analysis_result:
-            scaffolding_type = "協同鷹架"
-            understanding_level = "熟練者"
-        elif "差異鷹架" in analysis_result:
-            scaffolding_type = "差異鷹架"
-            understanding_level = "初學者"
-
-        return scaffolding_type, understanding_level, analysis_result
+        return jsonify(
+            {
+                "reply": reply,
+                "learning_unit": learning_unit,
+                "scaffolding_type": scaffolding_type,
+                "understanding_level": understanding_level,
+                "analysis_reason": analysis_reason,
+            }
+        )
 
     except Exception as e:
-        print(f"鷹架分析錯誤: {e}")
-        return "差異鷹架", "初學者", "分析失敗，使用預設鷹架"
+        return jsonify({"error": str(e)}), 500
 
 
+# 給出對應的鷹架回應
 def generate_scaffolded_response(
     user_message, learning_unit, scaffolding_type, understanding_level
 ):
@@ -327,7 +456,8 @@ def generate_scaffolded_response(
         return "抱歉，我遇到了一些技術問題。能請你再說一次你的問題嗎？"
 
 
-#########################################################################################
+# 推薦書籍 爬蟲
+# 關鍵字提取
 def extract_keywords_from_message(user_message):
     """使用OpenAI提取用戶訊息中的關鍵詞"""
     try:
@@ -350,6 +480,7 @@ def extract_keywords_from_message(user_message):
         return "機器學習"
 
 
+# 書籍爬蟲
 def search_books_google(keywords):
     """使用Google搜索相關書籍"""
     # 將關鍵字編碼，組成搜尋 URL
@@ -388,6 +519,7 @@ def search_books_google(keywords):
     return books
 
 
+# 抓取書籍的API
 @app.route("/get_book_recommendations", methods=["POST"])
 def get_book_recommendations():
     """獲取書籍推薦的API端點"""
@@ -410,63 +542,57 @@ def get_book_recommendations():
     return jsonify({"books": books, "keywords": keywords})
 
 
-# 儲存聊天資料 - 加入鷹架理論分析
-@app.route("/chat", methods=["POST"])
-def chat():
-    if "username" not in session:
-        return jsonify({"error": "未登入"}), 401
+###########################################################################
 
-    username = session["username"]
-    user_message = request.json.get("message")
+
+###########################################################################  => teacher_analytics
+# 教師儀表板頁面 避免透過更改網址進入教師帳號
+@app.route("/teacher")
+def teacher_dashboard():
+    if "username" not in session or session["username"] != "teacher":
+        flash("無權限訪問", "alert alert-danger")
+        return redirect(url_for("home"))
+    return render_template("teacher_analytics.html", username=session["username"])
+
+
+# 教師分析API
+@app.route("/teacher_analytics")
+def teacher_analytics():
+    if "username" not in session or session["username"] != "teacher":
+        return jsonify({"error": "無權限"}), 403
 
     try:
-        # 1. 識別學習單元
-        learning_unit = identify_learning_unit(user_message)
-
-        # 2. 獲取使用者學習歷史
-        user_history = get_user_learning_history(username)
-
-        # 3. 分析需要的鷹架類型
-        scaffolding_type, understanding_level, analysis_reason = (
-            analyze_scaffolding_need(
-                user_message, learning_unit, user_history, username
-            )
-        )
-
-        # 4. 根據鷹架類型生成回應
-        reply = generate_scaffolded_response(
-            user_message, learning_unit, scaffolding_type, understanding_level
-        )
-
-        # 5. 儲存到資料庫（包含鷹架資訊）
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
-        c.execute(
-            """
-            INSERT INTO conversations 
-            (username, user_message, bot_reply, learning_unit, scaffolding_type, understanding_level, analysis_reason) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-            (
-                username,
-                user_message,
-                reply,
-                learning_unit,
-                scaffolding_type,
-                understanding_level,
-                analysis_reason,
-            ),
-        )
-        conn.commit()
+
+        # 活躍學生數、平均理解、熱門單元、對話次數
+        stats = get_basic_stats(c)
+
+        # 鷹架類型統計
+        scaffolding_stats = get_scaffolding_stats(c)
+
+        # 學習單元統計
+        unit_stats = get_unit_stats(c)
+
+        # 理解程度統計
+        level_stats = get_level_stats(c)
+
+        # 每日活動統計
+        daily_activity = get_daily_activity(c)
+
+        # 每個學生的 總對話次數、鷹架、理解程度、最常討論單元、上次登入時間
+        students = get_student_details(c)
+
         conn.close()
 
         return jsonify(
             {
-                "reply": reply,
-                "learning_unit": learning_unit,
-                "scaffolding_type": scaffolding_type,
-                "understanding_level": understanding_level,
-                "analysis_reason": analysis_reason,
+                "stats": stats,
+                "scaffolding_stats": scaffolding_stats,
+                "unit_stats": unit_stats,
+                "level_stats": level_stats,
+                "daily_activity": daily_activity,
+                "students": students,
             }
         )
 
@@ -474,234 +600,7 @@ def chat():
         return jsonify({"error": str(e)}), 500
 
 
-# 對話紀錄
-@app.route("/chat/history")
-def chat_history():
-    if "username" not in session:
-        return jsonify({"error": "未登入"}), 401
-
-    username = session["username"]
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute(
-        """
-        SELECT user_message, bot_reply, learning_unit, scaffolding_type, understanding_level 
-        FROM conversations 
-        WHERE username = ? 
-        ORDER BY timestamp ASC
-    """,
-        (username,),
-    )
-    rows = c.fetchall()
-    conn.close()
-
-    history = []
-    for (
-        user_msg,
-        bot_reply,
-        learning_unit,
-        scaffolding_type,
-        understanding_level,
-    ) in rows:
-        history.append({"role": "user", "content": user_msg})
-        history.append(
-            {
-                "role": "ai",
-                "content": bot_reply,
-                "learning_unit": learning_unit,
-                "scaffolding_type": scaffolding_type,
-                "understanding_level": understanding_level,
-            }
-        )
-
-    return jsonify(history)
-
-
-# 獲取學習分析報告
-@app.route("/learning_analytics")
-def learning_analytics():
-    """提供學習分析數據"""
-    if "username" not in session:
-        return jsonify({"error": "未登入"}), 401
-
-    username = session["username"]
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-
-    # 統計不同鷹架類型的使用次數
-    c.execute(
-        """
-        SELECT scaffolding_type, COUNT(*) as count 
-        FROM conversations 
-        WHERE username = ? AND scaffolding_type IS NOT NULL
-        GROUP BY scaffolding_type
-    """,
-        (username,),
-    )
-    scaffolding_stats = dict(c.fetchall())
-
-    # 統計學習單元的涵蓋情況
-    c.execute(
-        """
-        SELECT learning_unit, COUNT(*) as count 
-        FROM conversations 
-        WHERE username = ? AND learning_unit IS NOT NULL
-        GROUP BY learning_unit
-    """,
-        (username,),
-    )
-    unit_stats = dict(c.fetchall())
-
-    # 統計理解程度變化
-    c.execute(
-        """
-        SELECT understanding_level, COUNT(*) as count 
-        FROM conversations 
-        WHERE username = ? AND understanding_level IS NOT NULL
-        GROUP BY understanding_level
-    """,
-        (username,),
-    )
-    level_stats = dict(c.fetchall())
-
-    conn.close()
-
-    return jsonify(
-        {
-            "scaffolding_usage": scaffolding_stats,
-            "learning_units": unit_stats,
-            "understanding_levels": level_stats,
-        }
-    )
-
-
-# 清除對話紀錄
-@app.route("/chat/clear", methods=["POST"])
-def clear_chat():
-    if "username" not in session:
-        return jsonify({"error": "未登入"}), 401
-
-    username = session["username"]
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("DELETE FROM conversations WHERE username = ?", (username,))
-    conn.commit()
-    conn.close()
-
-    return jsonify({"success": True})
-
-
-def init_db():
-    if not os.path.exists(DB_NAME):
-        conn = sqlite3.connect(DB_NAME)
-        c = conn.cursor()
-        c.execute(
-            """CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL
-            )"""
-        )
-        c.execute(
-            """CREATE TABLE conversations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                user_message TEXT NOT NULL,
-                bot_reply TEXT NOT NULL,
-                learning_unit TEXT,
-                scaffolding_type TEXT,
-                understanding_level TEXT,
-                analysis_reason TEXT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )"""
-        )
-
-        # 添加預設的teacher帳號
-        teacher_password = hash_password("teacher")  # 密碼也是teacher
-        c.execute(
-            "INSERT INTO users (username, password) VALUES (?, ?)",
-            ("teacher", teacher_password),
-        )
-
-        conn.commit()
-        conn.close()
-        print("資料庫初始化完成，已創建teacher帳號")
-    else:
-        # 檢查是否需要更新資料庫結構
-        conn = sqlite3.connect(DB_NAME)
-        c = conn.cursor()
-
-        # 檢查teacher帳號是否存在
-        c.execute("SELECT * FROM users WHERE username = 'teacher'")
-        teacher_exists = c.fetchone()
-
-        if not teacher_exists:
-            teacher_password = hash_password("teacher")
-            c.execute(
-                "INSERT INTO users (username, password) VALUES (?, ?)",
-                ("teacher", teacher_password),
-            )
-            print("已添加teacher帳號")
-
-        # 檢查是否有新的欄位
-        c.execute("PRAGMA table_info(conversations)")
-        columns = [column[1] for column in c.fetchall()]
-
-        new_columns = [
-            ("learning_unit", "TEXT"),
-            ("scaffolding_type", "TEXT"),
-            ("understanding_level", "TEXT"),
-            ("analysis_reason", "TEXT"),
-        ]
-
-        for col_name, col_type in new_columns:
-            if col_name not in columns:
-                c.execute(f"ALTER TABLE conversations ADD COLUMN {col_name} {col_type}")
-                print(f"已新增欄位: {col_name}")
-
-        conn.commit()
-        conn.close()
-
-
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-
-
-# 登入註冊畫面
-@app.route("/")
-def home():
-    return render_template("home.html")
-
-
-# 影片區
-@app.route("/video")
-def video():
-    if "username" not in session:
-        return redirect(url_for("home"))
-    return render_template("video.html", username=session["username"])
-
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        username = request.form["username"]
-        password = hash_password(request.form["password"])
-        try:
-            conn = sqlite3.connect(DB_NAME)
-            c = conn.cursor()
-            c.execute(
-                "INSERT INTO users (username, password) VALUES (?, ?)",
-                (username, password),
-            )
-            conn.commit()
-            conn.close()
-            flash("註冊成功，請登入！", "alert alert-success")
-            return render_template("home.html")
-        except sqlite3.IntegrityError:
-            flash("使用者名稱已存在", "alert alert-danger")
-    return render_template("home.html")
-
-
+# 獲取學生相關資料
 def get_basic_stats(cursor):
     """獲取基本統計數據"""
     # 活躍學生數（過去7天）
@@ -911,103 +810,171 @@ def get_student_details(cursor):
     return students
 
 
-# 教師儀表板頁面 避免透過更改網址進入教師帳號   8====D
-@app.route("/teacher")
-def teacher_dashboard():
-    if "username" not in session or session["username"] != "teacher":
-        flash("無權限訪問", "alert alert-danger")
-        return redirect(url_for("home"))
-    return render_template("teacher_analytics.html", username=session["username"])
+def get_user_learning_history(username):
+    """獲取使用者的學習歷史記錄"""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        """
+        SELECT user_message, learning_unit, scaffolding_type, understanding_level 
+        FROM conversations 
+        WHERE username = ? 
+        ORDER BY timestamp DESC 
+        LIMIT 10
+    """,
+        (username,),
+    )
+
+    history = c.fetchall()
+    conn.close()
+
+    return history
 
 
-# 教師分析API
-@app.route("/teacher_analytics")
-def teacher_analytics():
-    if "username" not in session or session["username"] != "teacher":
-        return jsonify({"error": "無權限"}), 403
+def analyze_scaffolding_need(user_message, learning_unit, user_history, username):
+    """分析需要何種鷹架支持"""
+
+    # 準備分析用的資料
+    analysis_prompt = f"""
+    你是一位機器學習教育專家，需要判斷學生需要何種鷹架支持。請根據以下資訊分析：
+
+    學習單元：{learning_unit}
+    單元難度：{LEARNING_UNITS.get(learning_unit, {}).get('difficulty_level', '未知')}
+    前置需求：{LEARNING_UNITS.get(learning_unit, {}).get('prerequisites', [])}
+    學生問題：{user_message}
+
+    學習歷史：
+    {[f"問題：{h[0]}，單元：{h[1]}，鷹架類型：{h[2]}，理解程度：{h[3]}" for h in user_history[:5]]}
+
+    請判斷學生需要以下哪種鷹架支持：
+
+    1. **差異鷹架（Differentiated Scaffolding）**：
+    - 適用於：學生對概念完全陌生，需要從基礎開始建構
+    - 特徵：提問基礎概念、缺乏前置知識、表達困惑
+
+    2. **重複鷹架（Repetitive Scaffolding）**：
+    - 適用於：學生有基本理解但需要加深印象和鞏固
+    - 特徵：重複詢問類似問題、理解不夠深入、需要練習
+
+    3. **協同鷹架（Collaborative Scaffolding）**：
+    - 適用於：學生有良好基礎，可以進行深入討論和應用
+    - 特徵：提出進階問題、想要實際應用、能夠思辨
+
+    請只回答以下格式：
+    鷹架類型：[差異鷹架/重複鷹架/協同鷹架]
+    理由：[簡短說明為何選擇此鷹架類型]
+    理解程度：[初學者/進階學習者/熟練者]
+    """
 
     try:
-        conn = sqlite3.connect(DB_NAME)
-        c = conn.cursor()
-
-        # 活躍學生數、平均理解、熱門單元、對話次數
-        stats = get_basic_stats(c)
-
-        # 鷹架類型統計
-        scaffolding_stats = get_scaffolding_stats(c)
-
-        # 學習單元統計
-        unit_stats = get_unit_stats(c)
-
-        # 理解程度統計
-        level_stats = get_level_stats(c)
-
-        # 每日活動統計
-        daily_activity = get_daily_activity(c)
-
-        # 每個學生的 總對話次數、鷹架、理解程度、最常討論單元、上次登入時間
-        students = get_student_details(c)
-
-        conn.close()
-
-        return jsonify(
-            {
-                "stats": stats,
-                "scaffolding_stats": scaffolding_stats,
-                "unit_stats": unit_stats,
-                "level_stats": level_stats,
-                "daily_activity": daily_activity,
-                "students": students,
-            }
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "你是鷹架理論專家，專門分析學生的學習需求。",
+                },
+                {"role": "user", "content": analysis_prompt},
+            ],
+            max_tokens=200,
+            temperature=0.3,
         )
+
+        analysis_result = response.choices[0].message.content.strip()
+
+        # 解析回應
+        scaffolding_type = "差異鷹架"  # 預設值
+        understanding_level = "初學者"  # 預設值
+
+        if "重複鷹架" in analysis_result:
+            scaffolding_type = "重複鷹架"
+            understanding_level = "進階學習者"
+        elif "協同鷹架" in analysis_result:
+            scaffolding_type = "協同鷹架"
+            understanding_level = "熟練者"
+        elif "差異鷹架" in analysis_result:
+            scaffolding_type = "差異鷹架"
+            understanding_level = "初學者"
+
+        return scaffolding_type, understanding_level, analysis_result
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"鷹架分析錯誤: {e}")
+        return "差異鷹架", "初學者", "分析失敗，使用預設鷹架"
 
 
-# 修改登入路由，添加教師判斷，是教師帳號 導向分析網頁。
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form["username"]
-        password = hash_password(request.form["password"])
-
-        conn = sqlite3.connect(DB_NAME)
-        c = conn.cursor()
-        c.execute(
-            "SELECT * FROM users WHERE username = ? AND password = ?",
-            (username, password),
-        )
-        user = c.fetchone()
-        conn.close()
-
-        if user:
-            session["username"] = username
-            # 如果是教師帳號，導向教師分析頁面
-            if username == "teacher":
-                return redirect(url_for("teacher_dashboard"))
-            else:
-                return redirect(url_for("video"))
-        else:
-            flash("帳號或密碼錯誤", "alert alert-danger")
-            return redirect(url_for("home"))
-
-    return redirect(url_for("home"))
+###########################################################################
 
 
+###########################################################################  => aiChatRobot
 # AI聊天
 @app.route("/dashboard")
 def dashboard():
     if "username" not in session:
         return render_template("home.html")
-    return render_template("aiChatRotbot.html", username=session["username"])
+    return render_template("aiChatRobot.html", username=session["username"])
 
 
-@app.route("/logout")
-def logout():
-    session.pop("username", None)
-    flash("已登出", "alert alert-success")
-    return render_template("home.html")
+###########################################################################
+
+
+# 對話紀錄
+@app.route("/chat/history")
+def chat_history():
+    if "username" not in session:
+        return jsonify({"error": "未登入"}), 401
+
+    username = session["username"]
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        """
+        SELECT user_message, bot_reply, learning_unit, scaffolding_type, understanding_level 
+        FROM conversations 
+        WHERE username = ? 
+        ORDER BY timestamp ASC
+    """,
+        (username,),
+    )
+    rows = c.fetchall()
+    conn.close()
+
+    history = []
+    for (
+        user_msg,
+        bot_reply,
+        learning_unit,
+        scaffolding_type,
+        understanding_level,
+    ) in rows:
+        history.append({"role": "user", "content": user_msg})
+        history.append(
+            {
+                "role": "ai",
+                "content": bot_reply,
+                "learning_unit": learning_unit,
+                "scaffolding_type": scaffolding_type,
+                "understanding_level": understanding_level,
+            }
+        )
+
+    return jsonify(history)
+
+
+# 清除對話紀錄
+@app.route("/chat/clear", methods=["POST"])
+def clear_chat():
+    if "username" not in session:
+        return jsonify({"error": "未登入"}), 401
+
+    username = session["username"]
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("DELETE FROM conversations WHERE username = ?", (username,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True})
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@
 }
 
 body {
-    background: url("home.jpg");
+    background: url("/static/photo/home.jpg");
     background-size: cover;
     background-repeat: no-repeat;
     background-attachment: fixed;
@@ -104,11 +104,13 @@ body {
     position: relative;
     display: flex;
     align-items: center;
+    align-content: center;
     justify-content: center;
     width: 512px;
     height: 420px;
     overflow: hidden;
     z-index: 2;
+    padding-bottom: 40px;
 }
 
 .login-container {
@@ -161,6 +163,7 @@ header {
     color: #fff;
     height: 50px;
     width: 100%;
+    margin: 4px 0;
     padding: 0 10px 0 45px;
     border: none;
     border-radius: 30px;
@@ -179,7 +182,7 @@ header {
 
 .input-box i {
     position: relative;
-    top: -35px;
+    top: -40px;
     left: 17px;
     color: #fff;
 }

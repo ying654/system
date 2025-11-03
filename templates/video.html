@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>教學影片區</title>
-    <link rel="stylesheet" href="/static/video.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/video.css') }}">
 </head>
 
 <body>
@@ -190,7 +190,7 @@
 
             <!-- AI 機器人按鈕 -->
             <button class="aiRobot-btn" onclick="toggleChat()" title="開啟 AI 聊天">
-                <img src="/static/aiRobot.png" alt="AI 機器人" />
+                <img src="/static/photo/aiRobot.png" alt="AI 機器人" />
             </button>
 
             <!-- 對話視窗 -->
@@ -219,7 +219,7 @@
             </div>
         </main>
     </div>
-    <script src="{{ url_for('static', filename='video.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/video.js') }}"></script>
 </body>
 
 </html>
