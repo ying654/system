@@ -366,94 +366,252 @@ def chat():
         return jsonify({"error": str(e)}), 500
 
 
-# 給出對應的鷹架回應
+
+# 根據學生理解程度給出簡短提示片段（會附加到 system prompt）
+DIFFICULTY_HINT = {
+    "初學者": "請用淺顯易懂的語句、生活化比喻與簡短範例說明。",
+    "中階者": "可以使用術語並提供一個實務上的簡短例子。",
+    "進階者": "使用專業術語並引導學生做延伸思考或探討限制條件。",
+}
+
+# header 標籤對應各鷹架（避免每次都用「重點」）
+HEADER_LABEL = {
+    "差異鷹架": "重點",
+    "重複鷹架": "重申",
+    "協同鷹架": "思考",
+}
+
+def format_concise_reply(raw_text, scaffolding_type, max_points=3):
+    """
+    改良版：
+    - 避免重複【重點】【重申】【思考】
+    - 移除 GPT 原輸出中的多餘符號 (-、•、*)
+    - 保留原有短條列與下一步提示
+    """
+    if not raw_text:
+        return f"【{HEADER_LABEL.get(scaffolding_type, '重點')}】暫無內容。"
+
+    # 移除多餘空白與符號
+    cleaned = re.sub(r'^[\s\-•*]+', '', raw_text.strip())
+
+    # 切句
+    pieces = [p.strip() for p in re.split(r'[\n。；]+', cleaned) if p.strip()]
+    header = HEADER_LABEL.get(scaffolding_type, "重點")
+
+    # 決定 title
+    raw_title = pieces[0] if pieces else ""
+    # 若 GPT 已含有【重點】等標籤，移除重複
+    raw_title = re.sub(r'^【?(重點|重申|思考)】?', '', raw_title).strip()
+    title = raw_title if len(raw_title) <= 60 else raw_title[:60] + "…"
+
+    # 擷取要點
+    points = []
+    for p in pieces[1:]:
+        subs = re.split(r'[，,；;：:]\s*', p)
+        for s in subs:
+            s = re.sub(r'^[\-\*•\d\.]+\s*', '', s.strip())  # 清除開頭的符號或編號
+            if s:
+                s_clean = s if len(s) <= 60 else s[:60] + "…"
+                points.append(s_clean)
+        if len(points) >= max_points:
+            break
+
+    if not points:
+        candidates = [c.strip() for c in re.split(r'[，,；;。\n]+', cleaned) if c.strip()]
+        points = candidates[1:1 + max_points] if len(candidates) > 1 else candidates[:max_points]
+    points = points[:max_points]
+
+    # 下一步依鷹架類型不同
+    if scaffolding_type == "差異鷹架":
+        next_hint = "→ 下一步：試用不同角度重新描述此概念。"
+    elif scaffolding_type == "重複鷹架":
+        next_hint = "→ 練習：做 1 題類似練習並比對答案。"
+    else:
+        next_hint = "→ 延伸：試著將此概念應用到實際情境。"
+
+    # 組合輸出
+    lines = [f"【{header}】{title}"]
+    for i, pt in enumerate(points, start=1):
+        lines.append(f"{i}. {pt}")
+    lines.append(next_hint)
+
+    reply = "\n".join(lines)
+    if len(reply) > 800:
+        reply = reply[:790] + "…"
+    return reply
+
+
+
 def generate_scaffolded_response(
     user_message, learning_unit, scaffolding_type, understanding_level
 ):
-    """根據鷹架類型生成適當的回應"""
+    """根據鷹架類型生成適當且簡潔的回應（改良版）"""
 
-    # 根據不同鷹架類型設計不同的系統提示
+    # 把理解層級的提示接到 system prompt（如果有就加上）
+    difficulty_append = DIFFICULTY_HINT.get(understanding_level, "")
+
     scaffolding_prompts = {
         "差異鷹架": f"""
-你是一位耐心的機器學習導師，正在使用「差異鷹架」策略教導初學者。
+你是一位親切的機器學習導師，正在使用「差異鷹架」幫助初學者。
 
-教學重點：
-- 從最基礎的概念開始解釋
-- 使用生活化的比喻和例子
-- 將複雜概念分解成簡單步驟
-- 多問「你知道嗎？」、「想像一下...」等引導式問題
-- 確認學生理解每個步驟後才繼續
+請用簡短條列格式回答：
+- 第一行為標籤與一句話標題（如：【重點】一句話）
+- 接著列出 1–3 個要點（每點不超過 25–60 字）
+- 最後以「→ 下一步：」給 1 行具體建議
+- 語氣：溫和、引導式，盡量使用生活化比喻
 
-當前學習單元：{learning_unit}
-單元基礎知識：{LEARNING_UNITS.get(learning_unit, {}).get('keywords', [])}
-前置需求：{LEARNING_UNITS.get(learning_unit, {}).get('prerequisites', [])}
+{difficulty_append}
 
-回應風格：
-- 像和朋友聊天一樣親切
-- 用「讓我們想想...」、「這就像...」開頭
-- 提供具體範例和視覺化描述
-- 鼓勵學生提問
+主題：{learning_unit}
+學生提問：{user_message}
 """,
+
         "重複鷹架": f"""
-你是一位機器學習導師，正在使用「重複鷹架」策略幫助學生鞏固理解。
+你是一位耐心的導師，使用「重複鷹架」協助學生鞏固概念。
 
-教學重點：
-- 用不同方式重複核心概念
-- 提供多個相似但漸進的例子
-- 強調重點知識的應用情境
-- 設計練習題讓學生實作
-- 連結之前學過的概念
+請用簡短條列格式回答：
+- 第一行為標籤與一句話標題（如：【重申】一句話）
+- 接著列出 1–3 個要點（可包含例子）
+- 最後以「→ 練習：」提供 1 行練習建議
+- 語氣：穩定、有節奏感，像複習筆記
 
-當前學習單元：{learning_unit}
-核心概念：{LEARNING_UNITS.get(learning_unit, {}).get('keywords', [])}
+{difficulty_append}
 
-回應風格：
-- 「讓我們再看一個例子...」
-- 「這個概念的另一種理解方式是...」
-- 「你可以這樣練習...」
-- 強化記憶的重複模式
+主題：{learning_unit}
+學生提問：{user_message}
 """,
+
         "協同鷹架": f"""
-你是一位機器學習專家，正在使用「協同鷹架」策略與有基礎的學生進行深度對話。
+你是一位機器學習專家，使用「協同鷹架」與學生共同探討進階問題。
 
-教學重點：
-- 引導學生自主思考和發現
-- 提出開放性和挑戰性問題
-- 鼓勵批判性思考
-- 連結理論與實際應用
-- 討論進階主題和最新發展
+請用簡短條列格式回答：
+- 第一行為標籤與一句話標題（如：【思考】一句話）
+- 接著列出 1–3 個關鍵啟發（每點不超過 25–60 字）
+- 最後以「→ 延伸：」提出 1 行思考方向
+- 語氣：啟發式、對話感強，可用「你覺得…？」、「是否可能…？」
 
-當前學習單元：{learning_unit}
-進階概念：{LEARNING_UNITS.get(learning_unit, {}).get('keywords', [])}
+{difficulty_append}
 
-回應風格：
-- 「你認為為什麼...？」
-- 「如果我們改變這個條件會怎樣？」
-- 「在實際應用中，這會遇到什麼挑戰？」
-- 促進深度思考的蘇格拉底式對話
-""",
+主題：{learning_unit}
+學生提問：{user_message}
+"""
     }
 
-    system_prompt = scaffolding_prompts.get(
-        scaffolding_type, scaffolding_prompts["差異鷹架"]
-    )
+    system_prompt = scaffolding_prompts.get(scaffolding_type, scaffolding_prompts["差異鷹架"])
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
-            max_tokens=500,
-            temperature=0.7,
+            max_tokens=200,     # 稍微放寬一點，讓 GPT-4o-mini 有空間輸出 4 行內容
+            temperature=0.15,   # 緊湊且穩定
         )
 
-        return response.choices[0].message.content
+        full_reply = response.choices[0].message.content  # 原始完整回覆（可存）
+        concise = format_concise_reply(full_reply, scaffolding_type, max_points=3)
+
+        # 如果你想同時回傳完整回覆給呼叫端：可以改成 return {"short": concise, "full": full_reply}
+        # 現階段為兼容現有程式流程，我們仍回傳 concise 字串
+        # 若你要儲存完整回覆，可在這裡加入 DB 儲存邏輯，例如 save_full_reply(user_id, full_reply)
+        return concise
 
     except Exception as e:
         print(f"回應生成錯誤: {e}")
         return "抱歉，我遇到了一些技術問題。能請你再說一次你的問題嗎？"
+
+
+
+# # 給出對應的鷹架回應
+# def generate_scaffolded_response(
+#     user_message, learning_unit, scaffolding_type, understanding_level
+# ):
+#     """根據鷹架類型生成適當的回應"""
+
+#     # 根據不同鷹架類型設計不同的系統提示
+#     scaffolding_prompts = {
+#         "差異鷹架": f"""
+# 你是一位耐心的機器學習導師，正在使用「差異鷹架」策略教導初學者。
+
+# 教學重點：
+# - 從最基礎的概念開始解釋
+# - 使用生活化的比喻和例子
+# - 將複雜概念分解成簡單步驟
+# - 多問「你知道嗎？」、「想像一下...」等引導式問題
+# - 確認學生理解每個步驟後才繼續
+
+# 當前學習單元：{learning_unit}
+# 單元基礎知識：{LEARNING_UNITS.get(learning_unit, {}).get('keywords', [])}
+# 前置需求：{LEARNING_UNITS.get(learning_unit, {}).get('prerequisites', [])}
+
+# 回應風格：
+# - 像和朋友聊天一樣親切
+# - 用「讓我們想想...」、「這就像...」開頭
+# - 提供具體範例和視覺化描述
+# - 鼓勵學生提問
+# """,
+#         "重複鷹架": f"""
+# 你是一位機器學習導師，正在使用「重複鷹架」策略幫助學生鞏固理解。
+
+# 教學重點：
+# - 用不同方式重複核心概念
+# - 提供多個相似但漸進的例子
+# - 強調重點知識的應用情境
+# - 設計練習題讓學生實作
+# - 連結之前學過的概念
+
+# 當前學習單元：{learning_unit}
+# 核心概念：{LEARNING_UNITS.get(learning_unit, {}).get('keywords', [])}
+
+# 回應風格：
+# - 「讓我們再看一個例子...」
+# - 「這個概念的另一種理解方式是...」
+# - 「你可以這樣練習...」
+# - 強化記憶的重複模式
+# """,
+#         "協同鷹架": f"""
+# 你是一位機器學習專家，正在使用「協同鷹架」策略與有基礎的學生進行深度對話。
+
+# 教學重點：
+# - 引導學生自主思考和發現
+# - 提出開放性和挑戰性問題
+# - 鼓勵批判性思考
+# - 連結理論與實際應用
+# - 討論進階主題和最新發展
+
+# 當前學習單元：{learning_unit}
+# 進階概念：{LEARNING_UNITS.get(learning_unit, {}).get('keywords', [])}
+
+# 回應風格：
+# - 「你認為為什麼...？」
+# - 「如果我們改變這個條件會怎樣？」
+# - 「在實際應用中，這會遇到什麼挑戰？」
+# - 促進深度思考的蘇格拉底式對話
+# """,
+#     }
+
+#     system_prompt = scaffolding_prompts.get(
+#         scaffolding_type, scaffolding_prompts["差異鷹架"]
+#     )
+
+#     try:
+#         response = client.chat.completions.create(
+#             model="gpt-3.5-turbo",
+#             messages=[
+#                 {"role": "system", "content": system_prompt},
+#                 {"role": "user", "content": user_message},
+#             ],
+#             max_tokens=500,
+#             temperature=0.7,
+#         )
+
+#         return response.choices[0].message.content
+
+#     except Exception as e:
+#         print(f"回應生成錯誤: {e}")
+#         return "抱歉，我遇到了一些技術問題。能請你再說一次你的問題嗎？"
 
 
 # 推薦書籍 爬蟲
@@ -462,7 +620,7 @@ def extract_keywords_from_message(user_message):
     """使用OpenAI提取用戶訊息中的關鍵詞"""
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
@@ -868,7 +1026,7 @@ def analyze_scaffolding_need(user_message, learning_unit, user_history, username
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
