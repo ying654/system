@@ -952,28 +952,13 @@ def get_user_learning_history(username):
 
 def analyze_scaffolding_need(user_message, learning_unit, user_history, username):
     """
-    改良版鷹架分析：結合行為規則與 GPT 微調。
-    新增：利用 recent_units 判斷學生是否在同主題持續提問。
+    改良版：讓 GPT 主導鷹架判斷，系統輔助提供理解層級。
     """
 
-    # === 第一層：根據歷史紀錄進行行為分析 ===
-    recent_units = [h[1] for h in user_history]
-    recent_msgs = [h[0] for h in user_history]
+    # === Step 1: 根據歷史紀錄判斷理解層級（Rule-based） ===
     recent_levels = [h[3] for h in user_history if h[3] != "未知"]
-
-    scaffolding_type = "差異鷹架"
     understanding_level = "初學者"
-    rule_reason = ""
 
-    # 判斷學生是否重複提問同主題（包含內容與單元）
-    same_unit_focus = (
-        len(recent_units) >= 3
-        and all(u == learning_unit for u in recent_units[-3:])
-    )
-    repeated_msgs = sum(1 for m in recent_msgs if learning_unit in m) >= 2
-    repeated = same_unit_focus or repeated_msgs
-
-    # 判斷熟悉度
     if len(recent_levels) >= 3:
         level_trend = recent_levels[-3:]
         if level_trend.count("熟練者") >= 2:
@@ -981,34 +966,33 @@ def analyze_scaffolding_need(user_message, learning_unit, user_history, username
         elif level_trend.count("進階學習者") >= 2:
             understanding_level = "進階學習者"
 
-    # 根據行為規則選擇鷹架
-    if repeated:
-        scaffolding_type = "重複鷹架"
-        rule_reason = "學生近期多次專注於相同主題，顯示需要鞏固練習。"
-    elif understanding_level == "熟練者":
-        scaffolding_type = "協同鷹架"
-        rule_reason = "學生理解程度高，適合進行延伸與整合討論。"
-    else:
-        scaffolding_type = "差異鷹架"
-        rule_reason = "學生首次提問該主題或理解仍在建立中。"
-
-    # === 第二層：語意分析（用 GPT 微調） ===
+    # === Step 2: 讓 GPT 主導判斷鷹架類型 ===
     refinement_prompt = f"""
-    你是一位教育心理學專家，根據鷹架理論分析學生提問。
+    你是一位機器學習教育專家。
+    根據鷹架理論，請判斷此學生目前最需要的鷹架類型。
 
+    鷹架理論定義如下：
+    - 差異性鷹架：當學生對相同主題理解程度不一，或學習風格不同時，ChatGPT 應提供不同角度、難度與範例引導。
+    - 重複性鷹架：當學生針對特定主題需要鞏固理解，ChatGPT 應提供多元說明方式或多種做法，協助反覆練習。
+    - 協同性鷹架：當學生處理需要整合多項知識與技能的高層次任務，ChatGPT 應協助整合概念與策略，促進整體思考與應用。
+
+    學生目前理解層級：{understanding_level}
     學習單元：{learning_unit}
     學生提問：{user_message}
-    初步判斷：{scaffolding_type}（理由：{rule_reason}）
-    歷史紀錄：
-    {[f"問題：{h[0]}，單元：{h[1]}，理解：{h[3]}" for h in user_history[:5]]}
 
-    請用簡短中文說明是否同意此鷹架分類，
-    並補充分析原因與學生可能的理解層次。
+    歷史紀錄摘要：
+    {[f"問題：{h[0]}，單元：{h[1]}，理解：{h[3]}" for h in user_history[-5:]]}
+
+    請依據以上內容判斷：
+    1. 學生最適合的鷹架類型（差異性 / 重複性 / 協同性）
+    2. 理由（簡短說明學生為何需要這類鷹架）
+    3. 若有需要，可根據問題語意調整理解層級。
+
     回傳 JSON 格式：
     {{
-        "scaffolding_type": "差異鷹架/重複鷹架/協同鷹架",
+        "scaffolding_type": "差異性鷹架/重複性鷹架/協同性鷹架",
         "understanding_level": "初學者/進階學習者/熟練者",
-        "reason": "簡短說明"
+        "reason": "簡短中文說明"
     }}
     """
 
@@ -1019,7 +1003,7 @@ def analyze_scaffolding_need(user_message, learning_unit, user_history, username
                 {"role": "system", "content": "你是一位教育心理學助理。"},
                 {"role": "user", "content": refinement_prompt},
             ],
-            max_tokens=200,
+            max_tokens=250,
             temperature=0.3,
         )
 
@@ -1029,12 +1013,12 @@ def analyze_scaffolding_need(user_message, learning_unit, user_history, username
             data = json.loads(match.group(0))
             return data["scaffolding_type"], data["understanding_level"], data["reason"]
         else:
-            # 如果 GPT 沒輸出 JSON，就回傳原始判斷
-            return scaffolding_type, understanding_level, rule_reason
+            return "差異性鷹架", understanding_level, "無法解析 GPT 回覆，使用預設結果。"
 
     except Exception as e:
         print(f"鷹架分析錯誤: {e}")
-        return scaffolding_type, understanding_level, rule_reason
+        return "差異性鷹架", understanding_level, "分析時發生錯誤。"
+
 
 
 # def analyze_scaffolding_need(user_message, learning_unit, user_history, username):
