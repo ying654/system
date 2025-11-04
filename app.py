@@ -380,76 +380,81 @@ def _postprocess_complete_sentences(text):
         return m.group(1).strip()
     return text + "。"
 
+def format_code_blocks(text):
+    # 將 ```python ... ``` 轉成 <pre><code class="language-python">...</code></pre>
+    return re.sub(
+        r'```python(.*?)```',
+        r'<pre><code class="language-python">\1</code></pre>',
+        text,
+        flags=re.DOTALL
+    )
 
-def generate_scaffolded_response(
-    user_message, learning_unit, scaffolding_type, understanding_level
-):
-    """根據鷹架類型產生短且完整的教學回覆，包含差異性／重複性／協同性鷹架邏輯"""
+def generate_scaffolded_response(user_message, learning_unit, scaffolding_type, understanding_level):
+    """根據鷹架類型產生聚焦且可包含程式範例的回覆"""
 
-    # 根據學生程度給予提示
     level_hint = {
-        "初學者": "請用淺顯易懂的語句並避免專有名詞。",
-        "中階者": "可以使用少量術語並加入簡短實務例子。",
-        "進階者": "使用專業術語並指出限制或延伸方向。",
+        "初學者": "請使用淺顯語言與生活化比喻。",
+        "中階者": "可使用部分專業詞彙與簡短程式範例。",
+        "進階者": "請提供技術細節、效率比較或延伸應用。",
     }.get(understanding_level, "")
+
+    # === 加入「程式碼可用」指令 ===
+    code_hint = "如果學生的問題涉及實作或語法，請附上一段簡短的 Python 程式碼區塊，程式碼長度不超過15行。"
+    # code_hint = "若學生問題涉及實作或語法，請使用 Markdown 語法 ```python ``` 包住簡短範例。"
 
     scaffolding_prompts = {
         "差異鷹架": f"""
-你是一位機器學習導師，正在使用「差異性鷹架」策略，根據學生的理解程度與學習風格，
-提供適性化的教學引導。
+你是一位機器學習導師，正在使用「差異性鷹架」策略，
+目的是根據學生的理解程度與學習風格給予適性化引導。
 
-教學重點：
-- 根據學生的輸入判斷理解層次（初學／中階／進階）
-- 對同一主題提供不同角度或深度的說明
-- 使用生活化比喻與多元表達方式幫助理解
-- 鼓勵學生回饋「哪裡還不懂」，以便調整教學策略
+教學原則：
+- 從基礎概念開始，說明簡單清楚
+- 使用生活化比喻幫助學生連結經驗
+- 若學生提到程式相關問題，可提供範例程式碼
+- 結尾鼓勵學生反思或再提問
 
-請用「三句話」回答（每句以句號或問號結尾）：
-1️⃣ 用一句話說明核心概念。
-2️⃣ 用一句生活化比喻或例子說明。
-3️⃣ 用一句話給出下一步或思考提示。
-回答結束時請在最後一行輸出 [[END]]。
+請用 3–4 句自然語氣回答，每句不超過 25 字。
 {level_hint}
+{code_hint}
 主題：{learning_unit}
 學生提問：{user_message}
+回答結束時輸出 [[END]]
 """,
 
         "重複鷹架": f"""
-你是一位耐心的機器學習導師，正在使用「重複性鷹架」策略，
-幫助學生透過多次、不同方式的練習與說明，加深理解。
+你是一位機器學習導師，正在使用「重複性鷹架」策略，
+幫助學生透過多種說明方式鞏固同一概念。
 
-教學重點：
-- 對同一概念提供多元說明與示範
-- 用不同範例或語境重複核心概念
-- 提供小練習或比較，引導學生自我檢查
+教學原則：
+- 用不同例子與語境重述核心概念
+- 可提供對照式程式碼範例
+- 鼓勵學生自己試著寫出類似程式
+- 結尾附上「練習方向」
 
-請用「三句話」回答（每句以句號或問號結尾）：
-1️⃣ 重申核心概念。
-2️⃣ 換一個角度或例子說明。
-3️⃣ 提出一個練習或檢查問題。
-回答結束時請在最後一行輸出 [[END]]。
+請用 3–4 句回答，每句不超過 25 字。
 {level_hint}
+{code_hint}
 主題：{learning_unit}
 學生提問：{user_message}
+回答結束時輸出 [[END]]
 """,
 
         "協同鷹架": f"""
-你是一位具備深厚背景的機器學習導師，正在使用「協同性鷹架」策略，
-幫助學生整合多領域知識與技能，進行高層次思考與應用。
+你是一位機器學習專家，正在使用「協同性鷹架」策略，
+協助學生整合跨領域知識並進行高層次思考。
 
-教學重點：
-- 協助學生在語法、概念、策略間建立連結
-- 提出開放性問題與挑戰性觀點
-- 幫助學生構建整體解題流程與邏輯結構
+教學原則：
+- 先點出核心邏輯或理論關聯
+- 再提出延伸應用或挑戰問題
+- 若相關，可附上示範程式片段
+- 結尾以「你覺得呢？」、「是否能延伸到…？」收尾
 
-請用「三句話」回答（每句以句號或問號結尾）：
-1️⃣ 用專業角度概述要點。
-2️⃣ 提出一個具挑戰性的延伸觀點。
-3️⃣ 以問題形式引導學生思考。
-回答結束時請在最後一行輸出 [[END]]。
+請用 3–5 句回答，每句不超過 30 字。
 {level_hint}
+{code_hint}
 主題：{learning_unit}
 學生提問：{user_message}
+回答結束時輸出 [[END]]
 """
     }
 
@@ -462,18 +467,20 @@ def generate_scaffolded_response(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
-            max_tokens=250,        
-            temperature=0.3,       # 稍微放鬆以保持自然但不離題
-            stop=["[[END]]"],      # 明確終止點
+            max_tokens=300,       # 🟩 提高上限，確保程式碼能完整
+            temperature=0.35,     # 🟩 稍提高自然度
+            stop=["[[END]]"],
         )
 
         raw = response.choices[0].message.content
+        # return _postprocess_complete_sentences(raw)   
         processed = _postprocess_complete_sentences(raw)
-        return processed
+        return format_code_blocks(processed)
 
     except Exception as e:
         print(f"回應生成錯誤: {e}")
         return "抱歉，我遇到了一些技術問題。能請你再說一次你的問題嗎？"
+
 
 
 
