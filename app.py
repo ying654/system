@@ -949,21 +949,39 @@ def get_user_learning_history(username):
 
     return history
 
+
+import json
+import re
+from openai import OpenAI
+
+client = OpenAI()
+
+
 def analyze_scaffolding_need(user_message, learning_unit, user_history, username):
     """
-    改良版：讓 GPT 主導鷹架判斷，系統輔助提供理解層級。
+    改良版：以量化平均方式判斷理解層級，GPT 主導鷹架判斷。
     """
 
-    # === Step 1: 根據歷史紀錄判斷理解層級（Rule-based） ===
-    recent_levels = [h[3] for h in user_history if h[3] != "未知"]
-    understanding_level = "初學者"
+    # === Step 1: 根據歷史紀錄量化理解層級 ===
+    level_score_map = {"初學者": 1, "進階學習者": 2, "熟練者": 3}
 
-    if len(recent_levels) >= 3:
-        level_trend = recent_levels[-3:]
-        if level_trend.count("熟練者") >= 2:
-            understanding_level = "熟練者"
-        elif level_trend.count("進階學習者") >= 2:
-            understanding_level = "進階學習者"
+    # 過濾掉未知紀錄，換算成分數
+    valid_scores = [
+        level_score_map[h[3]] for h in user_history if h[3] in level_score_map
+    ]
+
+    if valid_scores:
+        avg_score = sum(valid_scores) / len(valid_scores)
+    else:
+        avg_score = 1  # 若沒有紀錄，預設初學者
+
+    # 根據平均分數決定目前理解層級
+    if avg_score < 1.5:
+        understanding_level = "初學者"
+    elif avg_score < 2.5:
+        understanding_level = "進階學習者"
+    else:
+        understanding_level = "熟練者"
 
     # === Step 2: 讓 GPT 主導判斷鷹架類型 ===
     refinement_prompt = f"""
@@ -1012,84 +1030,15 @@ def analyze_scaffolding_need(user_message, learning_unit, user_history, username
             data = json.loads(match.group(0))
             return data["scaffolding_type"], data["understanding_level"], data["reason"]
         else:
-            return "差異性鷹架", understanding_level, "無法解析 GPT 回覆，使用預設結果。"
+            return (
+                "差異性鷹架",
+                understanding_level,
+                "無法解析 GPT 回覆，使用預設結果。",
+            )
 
     except Exception as e:
         print(f"鷹架分析錯誤: {e}")
         return "差異性鷹架", understanding_level, "分析時發生錯誤。"
-
-
-
-# def analyze_scaffolding_need(user_message, learning_unit, user_history, username):
-#     """分析需要何種鷹架支持"""
-
-#     # 準備分析用的資料
-#     analysis_prompt = f"""
-#     你是一位機器學習教育專家，需要判斷學生需要何種鷹架支持。請根據以下資訊分析：
-
-#     學習單元：{learning_unit}
-#     單元難度：{LEARNING_UNITS.get(learning_unit, {}).get('difficulty_level', '未知')}
-#     前置需求：{LEARNING_UNITS.get(learning_unit, {}).get('prerequisites', [])}
-#     學生問題：{user_message}
-
-#     學習歷史：
-#     {[f"問題：{h[0]}，單元：{h[1]}，鷹架類型：{h[2]}，理解程度：{h[3]}" for h in user_history[:5]]}
-
-#     請判斷學生需要以下哪種鷹架支持：
-
-#     1. **差異鷹架（Differentiated Scaffolding）**：
-#     - 適用於：學生對概念完全陌生，需要從基礎開始建構
-#     - 特徵：提問基礎概念、缺乏前置知識、表達困惑
-
-#     2. **重複鷹架（Repetitive Scaffolding）**：
-#     - 適用於：學生有基本理解但需要加深印象和鞏固
-#     - 特徵：重複詢問類似問題、理解不夠深入、需要練習
-
-#     3. **協同鷹架（Collaborative Scaffolding）**：
-#     - 適用於：學生有良好基礎，可以進行深入討論和應用
-#     - 特徵：提出進階問題、想要實際應用、能夠思辨
-
-#     請只回答以下格式：
-#     鷹架類型：[差異鷹架/重複鷹架/協同鷹架]
-#     理由：[簡短說明為何選擇此鷹架類型]
-#     理解程度：[初學者/進階學習者/熟練者]
-#     """
-
-#     try:
-#         response = client.chat.completions.create(
-#             model="gpt-4o-mini",
-#             messages=[
-#                 {
-#                     "role": "system",
-#                     "content": "你是鷹架理論專家，專門分析學生的學習需求。",
-#                 },
-#                 {"role": "user", "content": analysis_prompt},
-#             ],
-#             max_tokens=200,
-#             temperature=0.3,
-#         )
-
-#         analysis_result = response.choices[0].message.content.strip()
-
-#         # 解析回應
-#         scaffolding_type = "差異鷹架"  # 預設值
-#         understanding_level = "初學者"  # 預設值
-
-#         if "重複鷹架" in analysis_result:
-#             scaffolding_type = "重複鷹架"
-#             understanding_level = "進階學習者"
-#         elif "協同鷹架" in analysis_result:
-#             scaffolding_type = "協同鷹架"
-#             understanding_level = "熟練者"
-#         elif "差異鷹架" in analysis_result:
-#             scaffolding_type = "差異鷹架"
-#             understanding_level = "初學者"
-
-#         return scaffolding_type, understanding_level, analysis_result
-
-#     except Exception as e:
-#         print(f"鷹架分析錯誤: {e}")
-#         return "差異鷹架", "初學者", "分析失敗，使用預設鷹架"
 
 
 ###########################################################################
