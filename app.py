@@ -366,30 +366,33 @@ def chat():
         return jsonify({"error": str(e)}), 500
 
 
-
 # 給出對應的鷹架回應
 def _postprocess_complete_sentences(text):
     """確保回覆不以半句收尾：截到最後完整句，若沒有則補上句號。"""
     if not text:
         return text
-    text = text.replace('[[END]]', '').strip()
-    if re.search(r'[。\.!?！\?]$', text):
+    text = text.replace("[[END]]", "").strip()
+    if re.search(r"[。\.!?！\?]$", text):
         return text
-    m = re.search(r'(.+[。\.!?！\?])', text)
+    m = re.search(r"(.+[。\.!?！\?])", text)
     if m:
         return m.group(1).strip()
     return text + "。"
 
+
 def format_code_blocks(text):
     # 將 ```python ... ``` 轉成 <pre><code class="language-python">...</code></pre>
     return re.sub(
-        r'```python(.*?)```',
+        r"```python(.*?)```",
         r'<pre><code class="language-python">\1</code></pre>',
         text,
-        flags=re.DOTALL
+        flags=re.DOTALL,
     )
 
-def generate_scaffolded_response(user_message, learning_unit, scaffolding_type, understanding_level):
+
+def generate_scaffolded_response(
+    user_message, learning_unit, scaffolding_type, understanding_level
+):
     """根據鷹架類型產生聚焦且可包含程式範例的回覆"""
 
     level_hint = {
@@ -420,7 +423,6 @@ def generate_scaffolded_response(user_message, learning_unit, scaffolding_type, 
 學生提問：{user_message}
 回答結束時輸出 [[END]]
 """,
-
         "重複鷹架": f"""
 你是一位機器學習導師，正在使用「重複性鷹架」策略，
 幫助學生透過多種說明方式鞏固同一概念。
@@ -438,7 +440,6 @@ def generate_scaffolded_response(user_message, learning_unit, scaffolding_type, 
 學生提問：{user_message}
 回答結束時輸出 [[END]]
 """,
-
         "協同鷹架": f"""
 你是一位機器學習專家，正在使用「協同性鷹架」策略，
 協助學生整合跨領域知識並進行高層次思考。
@@ -455,10 +456,12 @@ def generate_scaffolded_response(user_message, learning_unit, scaffolding_type, 
 主題：{learning_unit}
 學生提問：{user_message}
 回答結束時輸出 [[END]]
-"""
+""",
     }
 
-    system_prompt = scaffolding_prompts.get(scaffolding_type, scaffolding_prompts["差異鷹架"])
+    system_prompt = scaffolding_prompts.get(
+        scaffolding_type, scaffolding_prompts["差異鷹架"]
+    )
 
     try:
         response = client.chat.completions.create(
@@ -467,23 +470,19 @@ def generate_scaffolded_response(user_message, learning_unit, scaffolding_type, 
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
-            max_tokens=300,       # 🟩 提高上限，確保程式碼能完整
-            temperature=0.35,     # 🟩 稍提高自然度
+            max_tokens=300,  # 🟩 提高上限，確保程式碼能完整
+            temperature=0.35,  # 🟩 稍提高自然度
             stop=["[[END]]"],
         )
 
         raw = response.choices[0].message.content
-        # return _postprocess_complete_sentences(raw)   
+        # return _postprocess_complete_sentences(raw)
         processed = _postprocess_complete_sentences(raw)
         return format_code_blocks(processed)
 
     except Exception as e:
         print(f"回應生成錯誤: {e}")
         return "抱歉，我遇到了一些技術問題。能請你再說一次你的問題嗎？"
-
-
-
-
 
 
 # # 給出對應的鷹架回應
@@ -1079,6 +1078,282 @@ def chat_history():
         )
 
     return jsonify(history)
+
+
+# 個人學習分析頁面
+@app.route("/my_learning")
+def my_learning():
+    if "username" not in session:
+        return redirect(url_for("home"))
+    return render_template("my_learning.html", username=session["username"])
+
+
+# 個人學習分析 API
+@app.route("/my_learning_analytics")
+def my_learning_analytics():
+    if "username" not in session:
+        return jsonify({"error": "未登入"}), 401
+
+    username = session["username"]
+
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+
+        # 獲取使用者所有對話記錄
+        c.execute(
+            """
+            SELECT learning_unit, understanding_level, user_message, scaffolding_type, timestamp
+            FROM conversations 
+            WHERE username = ? 
+            ORDER BY timestamp DESC
+        """,
+            (username,),
+        )
+        conversations = c.fetchall()
+        conn.close()
+
+        if not conversations:
+            return jsonify(
+                {
+                    "unit_progress": {},
+                    "weakness_analysis": {},
+                    "overall_stats": {
+                        "total_conversations": 0,
+                        "units_studied": 0,
+                        "avg_level": "初學者",
+                        "most_discussed_unit": "無",
+                    },
+                    "timeline": [],
+                }
+            )
+
+        # 分析各單元的理解程度
+        unit_progress = analyze_unit_progress(conversations)
+
+        # 分析各單元的弱點
+        weakness_analysis = analyze_unit_weakness(conversations, username)
+
+        # 整體統計
+        overall_stats = calculate_overall_stats(conversations)
+
+        # 學習時間軸
+        timeline = generate_learning_timeline(conversations)
+
+        return jsonify(
+            {
+                "unit_progress": unit_progress,
+                "weakness_analysis": weakness_analysis,
+                "overall_stats": overall_stats,
+                "timeline": timeline,
+            }
+        )
+
+    except Exception as e:
+        print(f"個人分析錯誤: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+def analyze_unit_progress(conversations):
+    """分析各學習單元的理解程度進展"""
+    unit_data = {}
+    level_scores = {"初學者": 1, "進階學習者": 2, "熟練者": 3, "未知": 0}
+
+    for unit, level, _, scaffolding, timestamp in conversations:
+        if not unit or unit == "通用概念":
+            continue
+
+        if unit not in unit_data:
+            unit_data[unit] = {
+                "conversations": 0,
+                "levels": [],
+                "scaffolding_types": [],
+                "first_seen": timestamp,
+                "last_seen": timestamp,
+            }
+
+        unit_data[unit]["conversations"] += 1
+        unit_data[unit]["levels"].append(level_scores.get(level, 0))
+        unit_data[unit]["scaffolding_types"].append(scaffolding)
+        unit_data[unit]["last_seen"] = timestamp
+
+    # 計算各單元的平均理解程度和進步趨勢
+    result = {}
+    for unit, data in unit_data.items():
+        avg_level = sum(data["levels"]) / len(data["levels"]) if data["levels"] else 0
+
+        # 計算進步趨勢（最近3次 vs 最早3次）
+        recent_levels = data["levels"][: min(3, len(data["levels"]))]
+        early_levels = data["levels"][-min(3, len(data["levels"])) :]
+
+        trend = "持平"
+        if len(data["levels"]) >= 3:
+            recent_avg = sum(recent_levels) / len(recent_levels)
+            early_avg = sum(early_levels) / len(early_levels)
+
+            if recent_avg > early_avg + 0.3:
+                trend = "進步中"
+            elif recent_avg < early_avg - 0.3:
+                trend = "需加強"
+
+        # 最常使用的鷹架類型
+        scaffolding_counter = Counter([s for s in data["scaffolding_types"] if s])
+        most_common_scaffolding = (
+            scaffolding_counter.most_common(1)[0][0] if scaffolding_counter else "未知"
+        )
+
+        result[unit] = {
+            "conversations": data["conversations"],
+            "avg_level": round(avg_level, 2),
+            "current_level": (
+                get_level_name(data["levels"][0]) if data["levels"] else "未知"
+            ),
+            "trend": trend,
+            "most_scaffolding": most_common_scaffolding,
+            "last_studied": data["last_seen"],
+        }
+
+    return result
+
+
+def analyze_unit_weakness(conversations, username):
+    """使用 GPT 分析各單元的弱點"""
+    unit_conversations = {}
+
+    # 按單元分組對話
+    for unit, level, message, scaffolding, timestamp in conversations:
+        if not unit or unit == "通用概念":
+            continue
+
+        if unit not in unit_conversations:
+            unit_conversations[unit] = []
+
+        unit_conversations[unit].append(
+            {"message": message, "level": level, "scaffolding": scaffolding}
+        )
+
+    weakness_result = {}
+
+    for unit, convs in unit_conversations.items():
+        # 只分析有足夠對話記錄的單元（至少3次對話）
+        if len(convs) < 3:
+            weakness_result[unit] = {
+                "weakness": "對話次數不足，尚無法分析弱點",
+                "suggestions": ["建議多與 AI 討論此單元的內容"],
+                "confidence": "低",
+            }
+            continue
+
+        # 取最近5次對話進行分析
+        recent_convs = convs[:5]
+
+        # 構建 GPT 分析提示
+        analysis_prompt = f"""
+你是一位機器學習教育專家。請根據學生在「{unit}」單元的學習記錄，分析其可能的弱點。
+
+學習記錄：
+{chr(10).join([f"- 問題：{c['message']} (理解程度：{c['level']}，鷹架：{c['scaffolding']})" for c in recent_convs])}
+
+請分析：
+1. 學生在此單元最主要的弱點或困難（1-2句話）
+2. 3個具體的改善建議
+3. 弱點分析的信心程度（高/中/低）
+
+回傳 JSON 格式：
+{{
+    "weakness": "主要弱點描述",
+    "suggestions": ["建議1", "建議2", "建議3"],
+    "confidence": "高/中/低"
+}}
+"""
+
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "你是教育分析專家，專門分析學生的學習弱點。",
+                    },
+                    {"role": "user", "content": analysis_prompt},
+                ],
+                max_tokens=300,
+                temperature=0.3,
+            )
+
+            result_text = response.choices[0].message.content.strip()
+
+            # 解析 JSON
+            import re
+
+            match = re.search(r"\{.*\}", result_text, re.DOTALL)
+            if match:
+                analysis = json.loads(match.group(0))
+                weakness_result[unit] = analysis
+            else:
+                weakness_result[unit] = {
+                    "weakness": "分析失敗",
+                    "suggestions": ["請繼續學習"],
+                    "confidence": "低",
+                }
+
+        except Exception as e:
+            print(f"單元 {unit} 弱點分析錯誤: {e}")
+            weakness_result[unit] = {
+                "weakness": "系統分析時發生錯誤",
+                "suggestions": ["請稍後再試"],
+                "confidence": "低",
+            }
+
+    return weakness_result
+
+
+def calculate_overall_stats(conversations):
+    """計算整體學習統計"""
+    level_scores = {"初學者": 1, "進階學習者": 2, "熟練者": 3}
+
+    units = set([c[0] for c in conversations if c[0] and c[0] != "通用概念"])
+    levels = [level_scores.get(c[1], 0) for c in conversations if c[1]]
+
+    avg_level_score = sum(levels) / len(levels) if levels else 0
+    avg_level_name = get_level_name(round(avg_level_score))
+
+    # 最常討論的單元
+    unit_counter = Counter([c[0] for c in conversations if c[0] and c[0] != "通用概念"])
+    most_discussed = unit_counter.most_common(1)[0][0] if unit_counter else "無"
+
+    return {
+        "total_conversations": len(conversations),
+        "units_studied": len(units),
+        "avg_level": avg_level_name,
+        "most_discussed_unit": most_discussed,
+    }
+
+
+def generate_learning_timeline(conversations):
+    """生成學習時間軸（最近10次重要學習事件）"""
+    timeline = []
+
+    # 篩選出有明確學習單元的對話
+    filtered = [
+        (c[0], c[1], c[4]) for c in conversations if c[0] and c[0] != "通用概念"
+    ]
+
+    # 取最近10次
+    for unit, level, timestamp in filtered[:10]:
+        timeline.append({"unit": unit, "level": level, "timestamp": timestamp})
+
+    return timeline
+
+
+def get_level_name(score):
+    """根據分數返回理解程度名稱"""
+    if score >= 2.5:
+        return "熟練者"
+    elif score >= 1.5:
+        return "進階學習者"
+    else:
+        return "初學者"
 
 
 # 清除對話紀錄

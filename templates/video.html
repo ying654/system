@@ -12,6 +12,7 @@
         <div class="system-title">機器學習教學平台</div>
         <div>
             <span class="user-label">歡迎，{{ username }}</span>
+            <a href="{{ url_for('my_learning') }}" class="logout-link">學習狀況</a>
             <a href="{{ url_for('dashboard') }}" class="logout-link">AI對話</a>
             <a href="{{ url_for('logout') }}" class="logout-link">登出</a>
         </div>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的學習分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/my_learning.css') }}">
+</head>
+
+<body>
+    <div class="header">
+        <h1>📊 我的學習分析</h1>
+        <div class="header-controls">
+            <button class="refresh-btn" onclick="loadMyAnalytics()">
+                <span id="refresh-text">重新整理</span>
+            </button>
+            <a href="/video" class="nav-btn">返回課程</a>
+            <a href="/logout" class="logout-btn">登出</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="error-container"></div>
+
+        <!-- 整體學習統計 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>📚 學習過的單元</h3>
+                <div class="number" id="unitsStudied">-</div>
+                <div class="description">累計探索主題數</div>
+            </div>
+            <div class="stat-card">
+                <h3>💬 總對話次數</h3>
+                <div class="number" id="totalConversations">-</div>
+                <div class="description">與 AI 的互動次數</div>
+            </div>
+            <div class="stat-card">
+                <h3>🎯 平均理解程度</h3>
+                <div class="number" id="avgLevel">-</div>
+                <div class="description">整體學習水平</div>
+            </div>
+            <div class="stat-card">
+                <h3>⭐ 最常學習單元</h3>
+                <div class="number" id="mostDiscussed">-</div>
+                <div class="description">最感興趣的主題</div>
+            </div>
+        </div>
+
+        <!-- 學習進度圖表 -->
+        <div class="chart-section">
+            <div class="chart-card full-width">
+                <h3>📈 各單元理解程度分佈</h3>
+                <div class="chart-container">
+                    <canvas id="unitProgressChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 弱點分析卡片 -->
+        <div class="weakness-section">
+            <h2>🎯 各單元弱點分析與建議</h2>
+            <div id="weaknessCards" class="weakness-grid">
+                <div class="loading">載入中...</div>
+            </div>
+        </div>
+
+        <!-- 學習時間軸 -->
+        <div class="timeline-section">
+            <h2>📅 最近學習軌跡</h2>
+            <div id="learningTimeline" class="timeline">
+                <div class="loading">載入中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/my_learning.js') }}"></script>
+</body>
+
+</html>
