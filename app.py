@@ -1182,6 +1182,7 @@ def my_learning_analytics():
                         "avg_level": "初學者",
                         "most_discussed_unit": "無",
                     },
+                    "scaffolding_stats": {},  # 新增鷹架統計
                     "timeline": [],
                 }
             )
@@ -1195,6 +1196,9 @@ def my_learning_analytics():
         # 整體統計
         overall_stats = calculate_overall_stats(conversations)
 
+        # 鷹架類型統計 (新增)
+        scaffolding_stats = calculate_scaffolding_stats(conversations)
+
         # 學習時間軸
         timeline = generate_learning_timeline(conversations)
 
@@ -1203,6 +1207,7 @@ def my_learning_analytics():
                 "unit_progress": unit_progress,
                 "weakness_analysis": weakness_analysis,
                 "overall_stats": overall_stats,
+                "scaffolding_stats": scaffolding_stats,  # 新增
                 "timeline": timeline,
             }
         )
@@ -1210,6 +1215,61 @@ def my_learning_analytics():
     except Exception as e:
         print(f"個人分析錯誤: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+def calculate_scaffolding_stats(conversations):
+    """計算使用者的鷹架類型統計"""
+    scaffolding_counter = Counter()
+
+    for unit, level, message, scaffolding, timestamp in conversations:
+        if scaffolding:
+            # 確保統一格式
+            scaffolding = normalize_scaffolding_type(scaffolding)
+            scaffolding_counter[scaffolding] += 1
+
+    # 計算百分比
+    total = sum(scaffolding_counter.values())
+    scaffolding_stats = {}
+
+    if total > 0:
+        for scaffolding_type, count in scaffolding_counter.items():
+            scaffolding_stats[scaffolding_type] = {
+                "count": count,
+                "percentage": round((count / total) * 100, 1),
+            }
+
+    return scaffolding_stats
+
+
+def calculate_overall_stats(conversations):
+    """計算整體學習統計"""
+    level_scores = {"初學者": 1, "進階學習者": 2, "熟練者": 3}
+
+    units = set([c[0] for c in conversations if c[0] and c[0] != "通用概念"])
+    levels = [level_scores.get(c[1], 0) for c in conversations if c[1]]
+
+    avg_level_score = sum(levels) / len(levels) if levels else 0
+    avg_level_name = get_level_name(round(avg_level_score))
+
+    # 最常討論的單元
+    unit_counter = Counter([c[0] for c in conversations if c[0] and c[0] != "通用概念"])
+    most_discussed = unit_counter.most_common(1)[0][0] if unit_counter else "無"
+
+    # 主要鷹架類型 (新增)
+    scaffolding_counter = Counter(
+        [normalize_scaffolding_type(c[3]) for c in conversations if c[3]]
+    )
+    main_scaffolding = (
+        scaffolding_counter.most_common(1)[0][0] if scaffolding_counter else "無"
+    )
+
+    return {
+        "total_conversations": len(conversations),
+        "units_studied": len(units),
+        "avg_level": avg_level_name,
+        "most_discussed_unit": most_discussed,
+        "main_scaffolding": main_scaffolding,  # 新增
+    }
 
 
 def analyze_unit_progress(conversations):

@@ -1,4 +1,5 @@
 let progressChart = null;
+let scaffoldingChart = null; // 新增
 let isLoading = false;
 
 async function loadMyAnalytics() {
@@ -34,6 +35,9 @@ async function loadMyAnalytics() {
         // 繪製進度圖表
         drawProgressChart(data.unit_progress);
 
+        // 繪製鷹架類型圖表 (新增)
+        drawScaffoldingChart(data.scaffolding_stats);
+
         // 顯示弱點分析
         displayWeaknessAnalysis(data.unit_progress, data.weakness_analysis);
 
@@ -56,12 +60,15 @@ function showError(message) {
 
 function updateOverallStats(stats) {
     document.getElementById('unitsStudied').textContent = stats.units_studied || 0;
-    document.getElementById('totalConversations').textContent = stats.total_conversations || 0;
     document.getElementById('avgLevel').textContent = stats.avg_level || '-';
 
     const mostDiscussed = stats.most_discussed_unit || '無';
     document.getElementById('mostDiscussed').textContent =
         mostDiscussed.length > 10 ? mostDiscussed.substring(0, 10) + '...' : mostDiscussed;
+
+    // 新增：主要鷹架類型
+    const mainScaffolding = stats.main_scaffolding || '無';
+    document.getElementById('mainScaffolding').textContent = mainScaffolding;
 }
 
 function drawProgressChart(unitProgress) {
@@ -150,6 +157,78 @@ function drawProgressChart(unitProgress) {
                 legend: {
                     display: true,
                     position: 'top'
+                }
+            }
+        }
+    });
+}
+
+// 新增：繪製鷹架類型分佈圖
+function drawScaffoldingChart(scaffoldingStats) {
+    const ctx = document.getElementById('scaffoldingChart');
+    if (!ctx) return;
+
+    // 銷毀舊圖表
+    if (scaffoldingChart) {
+        scaffoldingChart.destroy();
+    }
+
+    const labels = Object.keys(scaffoldingStats);
+    const data = labels.map(label => scaffoldingStats[label].count);
+    const percentages = labels.map(label => scaffoldingStats[label].percentage);
+
+    if (labels.length === 0) {
+        const ctxContext = ctx.getContext('2d');
+        ctxContext.clearRect(0, 0, ctx.width, ctx.height);
+        ctxContext.font = "16px Arial";
+        ctxContext.fillStyle = "#999";
+        ctxContext.textAlign = "center";
+        ctxContext.fillText("暫無鷹架數據", ctx.width / 2, ctx.height / 2);
+        return;
+    }
+
+    scaffoldingChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: [
+                    'rgba(141, 225, 141, 0.8)',  // 差異鷹架 - 綠色
+                    'rgba(255, 206, 86, 0.8)',   // 重複鷹架 - 黃色
+                    'rgba(255, 99, 132, 0.8)'    // 協同鷹架 - 紅色
+                ],
+                borderColor: [
+                    'rgba(141, 225, 141, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(255, 99, 132, 1)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true,
+                        font: {
+                            size: 13
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const percentage = percentages[context.dataIndex];
+                            return `${label}: ${value} 次 (${percentage}%)`;
+                        }
+                    }
                 }
             }
         }
@@ -276,5 +355,8 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('resize', () => {
     if (progressChart) {
         progressChart.resize();
+    }
+    if (scaffoldingChart) {
+        scaffoldingChart.resize();
     }
 });

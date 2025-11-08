@@ -384,3 +384,50 @@ body {
         height: 300px;
     }
 }
+
+/* 在原有的 CSS 基礎上，添加以下樣式 */
+
+/* 圖表區域 - 支持兩欄佈局 */
+.charts-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 30px;
+    margin-bottom: 40px;
+}
+
+/* 鷹架類型卡片的特殊樣式 */
+.stat-card:has(#mainScaffolding) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-card:has(#mainScaffolding) h3,
+.stat-card:has(#mainScaffolding) .number,
+.stat-card:has(#mainScaffolding) .description {
+    color: white;
+}
+
+/* 鷹架類型圖表的特殊樣式 */
+.chart-card:has(#scaffoldingChart) {
+    border: 2px solid #667eea;
+}
+
+.chart-card:has(#scaffoldingChart) h3 {
+    color: #667eea;
+}
+
+/* 響應式調整 */
+@media (max-width: 1200px) {
+    .charts-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .charts-section {
+        grid-template-columns: 1fr;
+    }
+}

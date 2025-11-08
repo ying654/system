@@ -32,11 +32,6 @@
                 <div class="description">累計探索主題數</div>
             </div>
             <div class="stat-card">
-                <h3>💬 總對話次數</h3>
-                <div class="number" id="totalConversations">-</div>
-                <div class="description">與 AI 的互動次數</div>
-            </div>
-            <div class="stat-card">
                 <h3>🎯 平均理解程度</h3>
                 <div class="number" id="avgLevel">-</div>
                 <div class="description">整體學習水平</div>
@@ -46,14 +41,30 @@
                 <div class="number" id="mostDiscussed">-</div>
                 <div class="description">最感興趣的主題</div>
             </div>
+            <!-- 新增：主要鷹架類型 -->
+            <div class="stat-card">
+                <h3>🏗️ 主要鷹架類型</h3>
+                <div class="number" id="mainScaffolding">-</div>
+                <div class="description">最常使用的學習策略</div>
+            </div>
         </div>
 
-        <!-- 學習進度圖表 -->
-        <div class="chart-section">
-            <div class="chart-card full-width">
+        <!-- 圖表區域 -->
+        <div class="charts-section"
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 30px; margin-bottom: 40px;">
+            <!-- 學習進度圖表 -->
+            <div class="chart-card">
                 <h3>📈 各單元理解程度分佈</h3>
                 <div class="chart-container">
                     <canvas id="unitProgressChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 新增：鷹架類型分佈圖 -->
+            <div class="chart-card">
+                <h3>🏗️ 鷹架類型使用分佈</h3>
+                <div class="chart-container">
+                    <canvas id="scaffoldingChart"></canvas>
                 </div>
             </div>
         </div>
