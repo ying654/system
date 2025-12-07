@@ -1483,7 +1483,14 @@ def clear_chat():
     username = session["username"]
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute("DELETE FROM conversations WHERE username = ?", (username,))
+
+    c.execute(
+        """UPDATE conversations 
+           SET user_message = '[已清除]', bot_reply = '[已清除]' 
+           WHERE username = ?""",
+        (username,),
+    )
+
     conn.commit()
     conn.close()
 

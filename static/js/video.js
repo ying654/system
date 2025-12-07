@@ -91,7 +91,12 @@ window.addEventListener("DOMContentLoaded", function () {
         .then(res => res.json())
         .then(history => {
             if (Array.isArray(history)) {
-                for (const msg of history) addMessage(msg.role, msg.content);
+                // 過濾掉已清除的對話
+                for (const msg of history) {
+                    if (msg.content !== '[已清除]') {
+                        addMessage(msg.role, msg.content);
+                    }
+                }
             } else if (history.error) {
                 addMessage('ai', '⚠️ 無法載入歷史紀錄：' + history.error);
             }
@@ -126,6 +131,8 @@ const clearBtn = document.getElementById('clearBtn');
 clearBtn.addEventListener('click', async () => {
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
+
+    // 清除前端顯示
     chatMessages.innerHTML = '';
     chatInput.value = '';
 
@@ -134,15 +141,17 @@ clearBtn.addEventListener('click', async () => {
     booksList.innerHTML = '<div class="no-books">開始對話即可獲得書籍推薦 ✨</div>';
 
     try {
+        // 呼叫後端清空對話內容（保留分析欄位）
         const res = await fetch('/chat/clear', { method: 'POST' });
         const result = await res.json();
+
         if (result.success) {
             addMessage('ai', '你好！有什麼我可以幫忙的嗎？');
         } else {
-            addMessage('ai', '清除紀錄失敗：' + (result.error || '未知錯誤'));
+            addMessage('ai', '清除記錄失敗：' + (result.error || '未知錯誤'));
         }
     } catch (e) {
-        addMessage('ai', '清除伺服器紀錄時發生錯誤');
+        addMessage('ai', '清除時發生錯誤');
         console.error(e);
     }
 });
