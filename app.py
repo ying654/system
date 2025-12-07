@@ -965,7 +965,7 @@ def analyze_scaffolding_need(user_message, learning_unit, user_history, username
 
             return scaffolding_type, understanding_level, reason
         else:
-            print(f"無法解析 GPT 回覆: {text}")
+            print(f"無法解析 GPT 回 覆: {text}")
             return "差異鷹架", understanding_level, "無法解析 GPT 回覆，使用預設結果。"
 
     except Exception as e:
