@@ -86,8 +86,8 @@ function formatMessage(text) {
     return tempDiv.innerHTML;
 }
 
-// 加入訊息至聊天框（改進版）
-function addMessage(sender, text) {
+// 加入訊息至聊天框（改進版，支援時間戳記）
+function addMessage(sender, text, showTimestamp = false) {
     const chatMessages = document.getElementById('chat-messages');
     const messageRow = document.createElement("div");
     messageRow.classList.add("message-row", sender);
@@ -100,8 +100,26 @@ function addMessage(sender, text) {
     bubble.innerHTML = formattedText;
 
     messageRow.appendChild(bubble);
+
+    // 可選：添加時間戳記
+    if (showTimestamp) {
+        const timestamp = document.createElement("div");
+        timestamp.classList.add("timestamp");
+        const now = new Date();
+        timestamp.textContent = now.toLocaleTimeString('zh-TW', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        messageRow.appendChild(timestamp);
+    }
+
     chatMessages.appendChild(messageRow);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // 平滑滾動到底部
+    chatMessages.scrollTo({
+        top: chatMessages.scrollHeight,
+        behavior: 'smooth'
+    });
 }
 
 // 綜合所有 DOMContentLoaded 的初始化內容
@@ -149,7 +167,8 @@ window.addEventListener("DOMContentLoaded", function () {
                 // 使用 Clipboard API
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(code).then(() => {
-                        btn.textContent = '已複製!';
+                        const originalText = btn.textContent;
+                        btn.textContent = '✓ 已複製';
                         btn.classList.add('copied');
                         setTimeout(() => {
                             btn.textContent = '複製';
@@ -221,13 +240,55 @@ function fallbackCopy(text, btn) {
     document.body.removeChild(textArea);
 }
 
-// 切換聊天視窗顯示/隱藏
+// 切換聊天視窗顯示/隱藏（添加動畫效果）
 function toggleChat() {
     const chatWindow = document.getElementById("chatWindow");
     const botBtn = document.querySelector(".aiRobot-btn");
     const isHidden = chatWindow.classList.contains("hidden");
-    chatWindow.classList.toggle("hidden", !isHidden);
-    botBtn.style.display = isHidden ? "none" : "block";
+
+    if (isHidden) {
+        chatWindow.classList.remove("hidden");
+        botBtn.style.display = "none";
+        // 添加彈出動畫
+        chatWindow.style.animation = "popIn 0.3s ease";
+    } else {
+        // 添加收起動畫
+        chatWindow.style.animation = "popOut 0.2s ease";
+        setTimeout(() => {
+            chatWindow.classList.add("hidden");
+            botBtn.style.display = "block";
+        }, 200);
+    }
+}
+
+// 添加動畫 keyframes（需要在 CSS 中定義，或通過 style 標籤動態添加）
+if (!document.getElementById('chat-animations')) {
+    const style = document.createElement('style');
+    style.id = 'chat-animations';
+    style.textContent = `
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        
+        @keyframes popOut {
+            from {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.8) translateY(20px);
+            }
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 // 清除聊天紀錄
@@ -330,16 +391,29 @@ window.addEventListener("DOMContentLoaded", () => {
     let offsetY = 0;
 
     chatHeader.addEventListener("mousedown", (e) => {
+        // 避免在點擊關閉按鈕時觸發拖曳
+        if (e.target.classList.contains('close-btn') || e.target.closest('.close-btn')) {
+            return;
+        }
+
         isDragging = true;
         offsetX = e.clientX - chatWindow.offsetLeft;
         offsetY = e.clientY - chatWindow.offsetTop;
         chatWindow.style.transition = "none";
+        chatHeader.style.cursor = "grabbing";
     });
 
     document.addEventListener("mousemove", (e) => {
         if (isDragging) {
-            chatWindow.style.left = `${e.clientX - offsetX}px`;
-            chatWindow.style.top = `${e.clientY - offsetY}px`;
+            const newLeft = e.clientX - offsetX;
+            const newTop = e.clientY - offsetY;
+
+            // 限制視窗不超出螢幕範圍
+            const maxLeft = window.innerWidth - chatWindow.offsetWidth;
+            const maxTop = window.innerHeight - chatWindow.offsetHeight;
+
+            chatWindow.style.left = `${Math.max(0, Math.min(newLeft, maxLeft))}px`;
+            chatWindow.style.top = `${Math.max(0, Math.min(newTop, maxTop))}px`;
             chatWindow.style.bottom = "auto";
             chatWindow.style.right = "auto";
             chatWindow.style.position = "fixed";
@@ -347,7 +421,150 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 
     document.addEventListener("mouseup", () => {
-        isDragging = false;
-        chatWindow.style.transition = "";
+        if (isDragging) {
+            isDragging = false;
+            chatWindow.style.transition = "";
+            chatHeader.style.cursor = "move";
+        }
     });
+
+    // ========== 調整大小功能 ==========
+    initializeResize();
 });
+
+// 初始化調整大小功能
+function initializeResize() {
+    const chatWindow = document.getElementById("chatWindow");
+
+    // 創建調整大小的控制點
+    const handles = [
+        { class: 'corner', cursor: 'nwse-resize' },
+        { class: 'right', cursor: 'ew-resize' },
+        { class: 'bottom', cursor: 'ns-resize' },
+        { class: 'left', cursor: 'ew-resize' },
+        { class: 'top', cursor: 'ns-resize' },
+        { class: 'corner-bl', cursor: 'nesw-resize' },
+        { class: 'corner-tr', cursor: 'nesw-resize' },
+        { class: 'corner-tl', cursor: 'nwse-resize' }
+    ];
+
+    handles.forEach(handle => {
+        const element = document.createElement('div');
+        element.className = `resize-handle ${handle.class}`;
+        chatWindow.appendChild(element);
+    });
+
+    // 調整大小邏輯
+    let isResizing = false;
+    let currentHandle = null;
+    let startX, startY, startWidth, startHeight, startLeft, startTop;
+
+    const minWidth = 320;
+    const minHeight = 400;
+    const maxWidth = window.innerWidth * 0.9;
+    const maxHeight = window.innerHeight * 0.85;
+
+    chatWindow.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('resize-handle')) {
+            isResizing = true;
+            currentHandle = e.target;
+            startX = e.clientX;
+            startY = e.clientY;
+            startWidth = chatWindow.offsetWidth;
+            startHeight = chatWindow.offsetHeight;
+
+            // 轉換位置為 left/top 格式（第一次調整時）
+            const rect = chatWindow.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+
+            // 立即切換到 left/top 定位方式
+            chatWindow.style.left = `${startLeft}px`;
+            chatWindow.style.top = `${startTop}px`;
+            chatWindow.style.bottom = 'auto';
+            chatWindow.style.right = 'auto';
+
+            chatWindow.classList.add('resizing');
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+
+        const handleClass = currentHandle.className;
+
+        // 右下角
+        if (handleClass.includes('corner') && !handleClass.includes('corner-')) {
+            const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX));
+            const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight + deltaY));
+            chatWindow.style.width = `${newWidth}px`;
+            chatWindow.style.height = `${newHeight}px`;
+        }
+        // 右側
+        else if (handleClass.includes('right')) {
+            const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX));
+            chatWindow.style.width = `${newWidth}px`;
+        }
+        // 底部
+        else if (handleClass.includes('bottom')) {
+            const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight + deltaY));
+            chatWindow.style.height = `${newHeight}px`;
+        }
+        // 左側
+        else if (handleClass.includes('left')) {
+            const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth - deltaX));
+            const widthDelta = newWidth - startWidth;
+            chatWindow.style.width = `${newWidth}px`;
+            chatWindow.style.left = `${startLeft - widthDelta}px`;
+        }
+        // 頂部
+        else if (handleClass.includes('top')) {
+            const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight - deltaY));
+            const heightDelta = newHeight - startHeight;
+            chatWindow.style.height = `${newHeight}px`;
+            chatWindow.style.top = `${startTop - heightDelta}px`;
+        }
+        // 左下角
+        else if (handleClass.includes('corner-bl')) {
+            const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth - deltaX));
+            const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight + deltaY));
+            const widthDelta = newWidth - startWidth;
+            chatWindow.style.width = `${newWidth}px`;
+            chatWindow.style.left = `${startLeft - widthDelta}px`;
+            chatWindow.style.height = `${newHeight}px`;
+        }
+        // 右上角
+        else if (handleClass.includes('corner-tr')) {
+            const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX));
+            const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight - deltaY));
+            const heightDelta = newHeight - startHeight;
+            chatWindow.style.width = `${newWidth}px`;
+            chatWindow.style.height = `${newHeight}px`;
+            chatWindow.style.top = `${startTop - heightDelta}px`;
+        }
+        // 左上角
+        else if (handleClass.includes('corner-tl')) {
+            const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth - deltaX));
+            const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight - deltaY));
+            const widthDelta = newWidth - startWidth;
+            const heightDelta = newHeight - startHeight;
+            chatWindow.style.width = `${newWidth}px`;
+            chatWindow.style.left = `${startLeft - widthDelta}px`;
+            chatWindow.style.height = `${newHeight}px`;
+            chatWindow.style.top = `${startTop - heightDelta}px`;
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            currentHandle = null;
+            chatWindow.classList.remove('resizing');
+        }
+    });
+}
