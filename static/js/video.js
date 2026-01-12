@@ -13,6 +13,7 @@ async function getBookRecommendations(userMessage) {
         console.error('獲取書籍推薦失敗:', error);
     }
 }
+
 function displayBookRecommendations(books, keywords) {
     const booksList = document.getElementById('booksList');
 
@@ -29,17 +30,17 @@ function displayBookRecommendations(books, keywords) {
 
     books.forEach(book => {
         html += `
-                    <a id = "bookstore" href="${book.link}">
-                       <div class="book-item">
-                        <img class="book-cover" src="${book.image}" alt="${book.title}">
-                        <div class="book-info">
-                            <div class="book-title">${book.title}</div>
-                            <div class="book-author">作者: ${book.author}</div>
-                            <div class="book-source">${book.source || '推薦書籍'}</div>
-                        </div>
-                    </div> 
-                    </a>
-                `;
+            <a id="bookstore" href="${book.link}">
+                <div class="book-item">
+                    <img class="book-cover" src="${book.image}" alt="${book.title}">
+                    <div class="book-info">
+                        <div class="book-title">${book.title}</div>
+                        <div class="book-author">作者: ${book.author}</div>
+                        <div class="book-source">${book.source || '推薦書籍'}</div>
+                    </div>
+                </div> 
+            </a>
+        `;
     });
 
     booksList.innerHTML = html;
@@ -50,7 +51,60 @@ function showBookLoading() {
     booksList.innerHTML = '<div class="loading-books">🔍 正在搜尋相關書籍...</div>';
 }
 
-// 綜合所有 DOMContentLoaded 的初始化內容為一段，避免重複與潛在順序錯誤
+// 格式化訊息內容，支援 HTML 和程式碼區塊
+function formatMessage(text) {
+    if (!text) return '';
+
+    // 處理 HTML 標籤（如 <pre><code>）
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = text;
+
+    // 為所有 <pre><code> 區塊添加複製按鈕
+    const codeBlocks = tempDiv.querySelectorAll('pre code');
+    codeBlocks.forEach((codeBlock, index) => {
+        const pre = codeBlock.parentElement;
+
+        // 創建包裝器
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-block-wrapper';
+
+        // 創建複製按鈕
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-code-btn';
+        copyBtn.textContent = '複製';
+        copyBtn.type = 'button';  // 防止觸發表單提交
+
+        // 將程式碼內容存儲在按鈕的 data 屬性中
+        copyBtn.setAttribute('data-code', codeBlock.textContent);
+
+        // 將 pre 包裝起來
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(pre);
+        wrapper.appendChild(copyBtn);
+    });
+
+    return tempDiv.innerHTML;
+}
+
+// 加入訊息至聊天框（改進版）
+function addMessage(sender, text) {
+    const chatMessages = document.getElementById('chat-messages');
+    const messageRow = document.createElement("div");
+    messageRow.classList.add("message-row", sender);
+
+    const bubble = document.createElement("div");
+    bubble.classList.add("bubble", sender);
+
+    // 使用 innerHTML 以支援 HTML 標籤
+    const formattedText = formatMessage(text);
+    bubble.innerHTML = formattedText;
+
+    messageRow.appendChild(bubble);
+    chatMessages.appendChild(messageRow);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// 綜合所有 DOMContentLoaded 的初始化內容
 window.addEventListener("DOMContentLoaded", function () {
     // dropdown 點擊展開/收合
     const dropdowns = document.querySelectorAll(".dropdown-btn");
@@ -60,11 +114,11 @@ window.addEventListener("DOMContentLoaded", function () {
             const arrow = this.querySelector(".arrow");
             const isOpen = content.style.display === "block";
             content.style.display = isOpen ? "none" : "block";
-            arrow.innerHTML = isOpen ? "&#9660;" : "&#9650;"; // ▼ ▲
+            arrow.innerHTML = isOpen ? "&#9660;" : "&#9650;";
         });
     });
 
-    // 點擊影片按鈕切換 iframe src 與標題 + active 樣式切換
+    // 點擊影片按鈕切換 iframe src 與標題
     const buttons = document.querySelectorAll(".dropdown-content button");
     const iframe = document.getElementById("videoPlayer");
     buttons.forEach(btn => {
@@ -85,13 +139,41 @@ window.addEventListener("DOMContentLoaded", function () {
     sidebar.addEventListener('mouseenter', () => sidebar.classList.add('scrollable'));
     sidebar.addEventListener('mouseleave', () => sidebar.classList.remove('scrollable'));
 
+    // 使用事件委派處理複製按鈕點擊（支援動態添加的按鈕）
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.classList.contains('copy-code-btn')) {
+            const btn = e.target;
+            const code = btn.getAttribute('data-code');
+
+            if (code) {
+                // 使用 Clipboard API
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(code).then(() => {
+                        btn.textContent = '已複製!';
+                        btn.classList.add('copied');
+                        setTimeout(() => {
+                            btn.textContent = '複製';
+                            btn.classList.remove('copied');
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('複製失敗:', err);
+                        // 降級方案
+                        fallbackCopy(code, btn);
+                    });
+                } else {
+                    // 降級方案：使用舊的 execCommand
+                    fallbackCopy(code, btn);
+                }
+            }
+        }
+    });
+
     // 初始歡迎訊息與歷史紀錄載入
     addMessage('ai', '你好！有什麼我可以幫忙的嗎？');
     fetch('/chat/history')
         .then(res => res.json())
         .then(history => {
             if (Array.isArray(history)) {
-                // 過濾掉已清除的對話
                 for (const msg of history) {
                     if (msg.content !== '[已清除]') {
                         addMessage(msg.role, msg.content);
@@ -104,6 +186,41 @@ window.addEventListener("DOMContentLoaded", function () {
         .catch(() => addMessage('ai', '⚠️ 載入紀錄時出錯。'));
 });
 
+// 降級複製方案（適用於不支援 Clipboard API 的瀏覽器）
+function fallbackCopy(text, btn) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            btn.textContent = '已複製!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = '複製';
+                btn.classList.remove('copied');
+            }, 2000);
+        } else {
+            btn.textContent = '複製失敗';
+            setTimeout(() => {
+                btn.textContent = '複製';
+            }, 2000);
+        }
+    } catch (err) {
+        console.error('降級複製也失敗:', err);
+        btn.textContent = '複製失敗';
+        setTimeout(() => {
+            btn.textContent = '複製';
+        }, 2000);
+    }
+
+    document.body.removeChild(textArea);
+}
+
 // 切換聊天視窗顯示/隱藏
 function toggleChat() {
     const chatWindow = document.getElementById("chatWindow");
@@ -113,35 +230,19 @@ function toggleChat() {
     botBtn.style.display = isHidden ? "none" : "block";
 }
 
-// 加入訊息至聊天框
-function addMessage(sender, text) {
-    const chatMessages = document.getElementById('chat-messages');
-    const messageRow = document.createElement("div");
-    messageRow.classList.add("message-row", sender);
-    const bubble = document.createElement("div");
-    bubble.classList.add("bubble", sender);
-    bubble.textContent = text;
-    messageRow.appendChild(bubble);
-    chatMessages.appendChild(messageRow);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// 清除聊天紀錄與輸入框
+// 清除聊天紀錄
 const clearBtn = document.getElementById('clearBtn');
 clearBtn.addEventListener('click', async () => {
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
 
-    // 清除前端顯示
     chatMessages.innerHTML = '';
     chatInput.value = '';
 
-    // 清除書籍推薦
     const booksList = document.getElementById('booksList');
     booksList.innerHTML = '<div class="no-books">開始對話即可獲得書籍推薦 ✨</div>';
 
     try {
-        // 呼叫後端清空對話內容（保留分析欄位）
         const res = await fetch('/chat/clear', { method: 'POST' });
         const result = await res.json();
 
@@ -172,7 +273,7 @@ chatForm.addEventListener('submit', async function (e) {
     // 顯示書籍推薦載入狀態
     showBookLoading();
 
-    // 顯示 AI 輸入中（三個點動畫）
+    // 顯示 AI 輸入中
     const chatMessages = document.getElementById('chat-messages');
     const typingRow = document.createElement("div");
     typingRow.classList.add("message-row", "ai");
@@ -188,7 +289,7 @@ chatForm.addEventListener('submit', async function (e) {
 
     try {
         // 同時發送聊天和書籍推薦請求
-        const [chatResponse, bookResponse] = await Promise.all([
+        const [chatResponse] = await Promise.all([
             fetch('/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -210,13 +311,11 @@ chatForm.addEventListener('submit', async function (e) {
             addMessage('ai', '錯誤：' + chatData.error);
         }
     } catch (error) {
-        // 移除輸入中提示
         const typingEl = document.getElementById("typingIndicator");
         if (typingEl) typingEl.remove();
 
         addMessage('ai', '伺服器錯誤，請稍後再試。');
 
-        // 如果聊天失敗，也清除書籍推薦的載入狀態
         const booksList = document.getElementById('booksList');
         booksList.innerHTML = '<div class="no-books">獲取推薦失敗，請稍後再試</div>';
     }

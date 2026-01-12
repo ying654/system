@@ -75,15 +75,12 @@ body {
     padding: 10px;
     box-shadow: 2px 0 6px rgba(0, 0, 0, 0.06);
     position: relative;
-
     max-height: 100vh;
     overflow-y: auto;
-    /* 遠啟用滾動 */
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
 }
 
-/*  Chrome / Safari / Edge */
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
@@ -98,11 +95,9 @@ body {
     transition: background-color 0.3s ease;
 }
 
-/*  滑鼠在滾輪上 or 滾動時 - 加深滾輪顏色 */
 .sidebar::-webkit-scrollbar-thumb:hover,
 .sidebar:active::-webkit-scrollbar-thumb {
     background-color: rgba(0, 0, 0, 0.3);
-    /* 滾動中 - 深色 */
 }
 
 .sidebar h2 {
@@ -133,7 +128,6 @@ body {
     color: #1c2c38;
 }
 
-/* Hover：微提亮，仍屬低亮度 */
 .dropdown-btn:hover {
     background-color: #c2d8e7;
 }
@@ -175,11 +169,9 @@ body {
 .dropdown-content button.active {
     background-color: #bddff7;
     color: #0d2c49;
-
     font-weight: 600;
 }
 
-/* 展開動畫 */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -196,7 +188,6 @@ body {
 .main {
     flex-grow: 1;
     min-width: 300px;
-    /* 保證至少 300px 寬 */
 }
 
 .video-wrapper {
@@ -211,16 +202,13 @@ body {
 /* AI 機器人按鈕 */
 .aiRobot-btn {
     position: fixed;
-    /* 固定在螢幕上，不隨滾動改變 */
     bottom: 60px;
     right: 45px;
-    /* 靠右下角 */
     background-color: transparent;
     padding: 0;
     border: none;
     cursor: pointer;
     z-index: 9999;
-    /* 確保不會被其他元素擋住 */
 }
 
 .aiRobot-btn img {
@@ -375,18 +363,15 @@ body {
         max-height: none;
         margin-top: 20px;
     }
-}
 
-/* 調整主容器以適應書籍推薦面板 */
-.container {
-    margin-right: 340px;
-}
-
-@media (max-width: 1200px) {
     .container {
         margin-right: 0;
         flex-direction: column;
     }
+}
+
+.container {
+    margin-right: 340px;
 }
 
 #bookRecommendations {
@@ -427,22 +412,18 @@ body {
     cursor: default;
 }
 
-/* 一列訊息容器 */
 .message-row {
     display: flex;
     margin-bottom: 8px;
 }
 
-/* AI靠左 */
 .message-row.ai {
     justify-content: flex-start;
 }
 
-/* USER靠右 */
 .message-row.user {
     justify-content: flex-end;
 }
-
 
 .hidden {
     display: none;
@@ -515,12 +496,10 @@ body {
     cursor: text;
 }
 
-/* 使用者泡泡 */
 .bubble.user {
     background-color: #d1ecf1;
 }
 
-/* AI 泡泡 */
 .bubble.ai {
     background-color: #f0f0f0;
 }
@@ -529,7 +508,6 @@ body {
     background-color: red;
     transition: all 0.2s ease;
 }
-
 
 .bubble.typing {
     background-color: #f0f0f0;
@@ -569,4 +547,113 @@ body {
         opacity: 1;
         transform: scale(1);
     }
+}
+
+/* ===== 程式碼區塊樣式 ===== */
+.bubble pre {
+    background-color: #282c34;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 8px 0;
+    overflow-x: auto;
+    max-width: 100%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.bubble code {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #abb2bf;
+    display: block;
+    white-space: pre;
+    tab-size: 4;
+}
+
+/* 行內程式碼樣式 */
+.bubble p code {
+    background-color: #e8e8e8;
+    color: #d63384;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+    display: inline;
+    white-space: normal;
+}
+
+/* 程式碼語法高亮 - 基本顏色 */
+.bubble .keyword {
+    color: #c678dd;
+}
+
+.bubble .string {
+    color: #98c379;
+}
+
+.bubble .comment {
+    color: #5c6370;
+    font-style: italic;
+}
+
+.bubble .number {
+    color: #d19a66;
+}
+
+.bubble .function {
+    color: #61afef;
+}
+
+/* 複製按鈕 */
+.code-block-wrapper {
+    position: relative;
+    margin: 8px 0;
+}
+
+.copy-code-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.copy-code-btn:hover {
+    opacity: 1;
+}
+
+.copy-code-btn.copied {
+    background-color: #28a745;
+}
+
+/* 確保程式碼區塊在氣泡內正確顯示 */
+.bubble.ai pre,
+.bubble.user pre {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* 滾動條美化 */
+.bubble pre::-webkit-scrollbar {
+    height: 8px;
+}
+
+.bubble pre::-webkit-scrollbar-track {
+    background: #1e2127;
+    border-radius: 4px;
+}
+
+.bubble pre::-webkit-scrollbar-thumb {
+    background: #4a5568;
+    border-radius: 4px;
+}
+
+.bubble pre::-webkit-scrollbar-thumb:hover {
+    background: #5a6678;
 }
